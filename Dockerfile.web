@@ -1,0 +1,30 @@
+# Build image ของ apps/web (แทน deploy-package/ เดิม)
+# ก่อน build ต้องมี pnpm-lock.yaml (รัน `pnpm install` ในเครื่องหนึ่งครั้งแล้ว commit)
+FROM node:22-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+RUN corepack enable
+WORKDIR /app
+
+# 1) ตัดเฉพาะ package ที่ web ใช้
+FROM base AS pruner
+COPY . .
+RUN pnpm dlx turbo prune web --docker
+
+# 2) ติดตั้ง + build
+FROM base AS builder
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+# ยังไม่มี schema ในขั้นนี้ จึงข้าม postinstall (prisma generate) ไปก่อน
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY --from=pruner /app/out/full/ .
+RUN pnpm --filter @repo/db generate
+RUN pnpm --filter web build
+
+# 3) runtime
+FROM base AS runner
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+WORKDIR /app
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

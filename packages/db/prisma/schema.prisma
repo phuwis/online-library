@@ -1,0 +1,135 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── ข้อมูลหลัก (โตช้า) ─────────────
+
+model Book {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  author      String
+  description String?
+  coverUrl    String?
+  fileUrl     String // ไฟล์ epub/pdf บน object storage (S3/R2)
+  fileType    FileType   @default(EPUB)
+  pageCount   Int?
+  status      BookStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  categories BookCategory[]
+  progress   ReadingProgress[]
+  dailyStats BookStatsDaily[]
+
+  @@index([status, createdAt])
+}
+
+model Category {
+  id    String         @id @default(cuid())
+  name  String         @unique
+  slug  String         @unique
+  books BookCategory[]
+}
+
+model BookCategory {
+  bookId     String
+  categoryId String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([bookId, categoryId])
+  @@index([categoryId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(READER)
+  createdAt DateTime @default(now())
+
+  progress ReadingProgress[]
+}
+
+// ตำแหน่งที่อ่านล่าสุดของผู้ใช้ต่อเล่ม (1 แถวต่อคู่ → ไม่โตตามจำนวนครั้งที่อ่าน)
+model ReadingProgress {
+  userId    String
+  bookId    String
+  location  String // epub CFI หรือเลขหน้า
+  percent   Float    @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@id([userId, bookId])
+}
+
+// ───────────── Events (โตเร็วมาก) ─────────────
+// append-only, ไม่มี FK ตั้งใจ (เพื่อ write เร็ว + partition ได้)
+// ต้อง partition ตามเดือน → ดู README หัวข้อ "Partition ReadingEvent"
+model ReadingEvent {
+  id         BigInt    @default(autoincrement())
+  occurredAt DateTime  @default(now())
+  bookId     String
+  userId     String?
+  sessionId  String // uuid จาก client ต่อ 1 ครั้งที่เปิดอ่าน
+  type       EventType
+  percent    Float     @default(0) // 0..1
+  deltaSec   Int       @default(0) // วินาทีที่อ่านเพิ่มตั้งแต่ event ก่อนหน้า
+
+  @@id([id, occurredAt]) // partition key ต้องอยู่ใน PK
+  @@index([bookId, occurredAt])
+}
+
+// ───────────── Aggregates (dashboard อ่านจากตรงนี้) ─────────────
+
+model BookStatsDaily {
+  bookId        String
+  date          DateTime @db.Date
+  sessions      Int      @default(0)
+  uniqueReaders Int      @default(0) // นับเฉพาะผู้ใช้ที่ล็อกอิน
+  totalSec      BigInt   @default(0)
+  finished      Int      @default(0)
+  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@id([bookId, date])
+  @@index([date])
+}
+
+model SiteStatsDaily {
+  date          DateTime @id @db.Date
+  sessions      Int      @default(0)
+  uniqueReaders Int      @default(0)
+  totalSec      BigInt   @default(0)
+}
+
+enum Role {
+  READER
+  ADMIN
+}
+
+enum FileType {
+  EPUB
+  PDF
+}
+
+enum BookStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EventType {
+  OPEN
+  HEARTBEAT
+  CLOSE
+  FINISH
+}

@@ -1,0 +1,8 @@
+@import "tailwindcss";
+/* theme (light/dark tokens) อยู่ที่แพ็กเกจกลาง ใช้ร่วมกันทุกแอป */
+@import "@repo/ui/styles.css";
+
+/* ให้ Tailwind สแกน class ใน packages/ui ด้วย */
+@source "../../../packages/ui/src";
+
+/* ปรับแต่งเฉพาะแอป web เพิ่มต่อจากนี้ */

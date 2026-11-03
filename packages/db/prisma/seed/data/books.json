@@ -1,0 +1,19 @@
+[
+  {
+    "title": "ตัวอย่างหนังสือเล่มที่ 1",
+    "slug": "sample-book-1",
+    "author": "ผู้เขียนตัวอย่าง",
+    "description": "ข้อมูลตัวอย่างสำหรับทดสอบระบบ ปรับ field ให้ตรงกับ JSON เดิมของคุณ",
+    "fileUrl": "https://example.com/books/sample-book-1.epub",
+    "fileType": "EPUB",
+    "categorySlugs": ["fiction"]
+  },
+  {
+    "title": "ตัวอย่างหนังสือเล่มที่ 2",
+    "slug": "sample-book-2",
+    "author": "ผู้เขียนตัวอย่าง",
+    "fileUrl": "https://example.com/books/sample-book-2.epub",
+    "fileType": "EPUB",
+    "categorySlugs": ["science", "history"]
+  }
+]

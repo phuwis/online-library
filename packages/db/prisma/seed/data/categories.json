@@ -1,0 +1,5 @@
+[
+  { "name": "นิยาย", "slug": "fiction" },
+  { "name": "วิทยาศาสตร์", "slug": "science" },
+  { "name": "ประวัติศาสตร์", "slug": "history" }
+]
