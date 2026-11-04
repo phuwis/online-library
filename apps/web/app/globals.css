@@ -6,3 +6,24 @@
 @source "../../../packages/ui/src";
 
 /* ปรับแต่งเฉพาะแอป web เพิ่มต่อจากนี้ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. ประกาศฟอนต์ที่นำเข้ามาใช้งาน */
+@font-face {
+  font-family: "PrimaryFont";
+  /* แก้จุดที่ 1: ตัด /public ออก เหลือแค่ /fonts/... */
+  /* แก้จุดที่ 2: เปลี่ยน format เป็น "truetype" สำหรับไฟล์ .ttf */
+  src: url("/fonts/Sarabun-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 2. ตั้งค่าให้เว็บทั้งหมดใช้ฟอนต์นี้เป็นค่าเริ่มต้น (Global) */
+@layer base {
+  body {
+    font-family: "PrimaryFont", sans-serif;
+  }
+}

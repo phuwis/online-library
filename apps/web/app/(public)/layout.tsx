@@ -8,7 +8,10 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 text-foreground relative flex flex-col font-sans">
+    <div
+      className="min-h-screen bg-slate-50/60 dark:bg-slate-950 text-foreground relative flex flex-col"
+      style={{ fontFamily: '"PrimaryFont", sans-serif' }}
+    >
       {/* Background Watermark Image */}
       <div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center overflow-hidden">
         <img
@@ -32,10 +35,10 @@ export default function PublicLayout({
             </div>
             <div className="flex flex-col">
               <span className="text-sm md:text-base font-bold tracking-tight text-foreground group-hover:text-primary transition-colors leading-snug">
-                สถาบันดำรงราชานุภาพ สำนักงานปลัดกระทรวงมหาดไทย
+                ห้องสมุดกระทรวงมหาดไทย
               </span>
               <span className="text-[11px] text-muted-foreground">
-                กลุ่มงานพัฒนาและบริหารจัดการความรู้ (KM)
+                สถาบันดำรงราชานุภาพ สำนักงานปลัดกระทรวงมหาดไทย
               </span>
             </div>
           </Link>

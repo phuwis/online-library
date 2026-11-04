@@ -40,6 +40,11 @@ export default function BookReaderPage({
   const [zoom, setZoom] = useState<number>(100);
   const bookRef = useRef<any>(null);
 
+  // 🌟 สร้าง Session ID เฉพาะกิจสำหรับการเปิดอ่านครั้งนี้
+  const [sessionId] = useState(() =>
+    typeof window !== "undefined" ? crypto.randomUUID() : "",
+  );
+
   useEffect(() => {
     import("react-pdf").then((mod) => {
       mod.pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${mod.pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -53,6 +58,21 @@ export default function BookReaderPage({
         const data = await res.json();
         if (data.success) {
           setBook(data.book);
+
+          // 🌟 เมื่อโหลดข้อมูลหนังสือสำเร็จ ให้ส่ง Event "OPEN" ไปยัง API สถิติ
+          if (data.book?.id) {
+            fetch("/api/reader/event", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bookId: data.book.id,
+                type: "OPEN",
+                sessionId,
+                percent: 0,
+                deltaSec: 0,
+              }),
+            }).catch((err) => console.error("Failed to track open book:", err));
+          }
         }
       } catch (error) {
         console.error("Failed to fetch book:", error);
@@ -61,7 +81,30 @@ export default function BookReaderPage({
       }
     }
     fetchBookData();
-  }, [slug]);
+  }, [slug, sessionId]);
+
+  // 🌟 ตั้งเวลาส่ง Heartbeat สะสมเวลาอ่านทุกๆ 30 วินาที
+  useEffect(() => {
+    if (!book?.id) return;
+
+    const interval = setInterval(() => {
+      const currentPercent =
+        numPages > 0 ? Math.round((pageNumber / numPages) * 100) : 0;
+      fetch("/api/reader/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookId: book.id,
+          type: "HEARTBEAT",
+          sessionId,
+          percent: currentPercent,
+          deltaSec: 30, // สะสมเวลาเพิ่ม 30 วินาทีต่อรอบ
+        }),
+      }).catch((err) => console.error("Failed to send heartbeat:", err));
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [book?.id, pageNumber, numPages, sessionId]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -80,7 +123,23 @@ export default function BookReaderPage({
   };
 
   const onPageFlip = (e: any) => {
-    setPageNumber(e.data + 1);
+    const newPage = e.data + 1;
+    setPageNumber(newPage);
+
+    // ถ้าเปิดอ่านถึงหน้าสุดท้าย สามารถส่ง Event "FINISH" ได้
+    if (book?.id && numPages > 0 && newPage >= numPages) {
+      fetch("/api/reader/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookId: book.id,
+          type: "FINISH",
+          sessionId,
+          percent: 100,
+          deltaSec: 0,
+        }),
+      }).catch((err) => console.error("Failed to track finish book:", err));
+    }
   };
 
   const progressPercent =
@@ -103,7 +162,6 @@ export default function BookReaderPage({
   }
 
   return (
-    // ใช้ fixed และ z-[9999] ทับทุกเลย์เอาต์ของระบบ เพื่อไม่ให้ Header/Footer หลักโผล่มากวน
     <div className="fixed inset-0 z-[9999] bg-zinc-950 text-foreground flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none">
       {/* 1. Reader Header */}
       <header className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 shadow-sm flex items-center justify-between shrink-0 h-14">
@@ -159,7 +217,7 @@ export default function BookReaderPage({
         </div>
       </header>
 
-      {/* 2. Main Reader Content Area (ปรับขนาดหนังสือให้พอดีจอ ไม่ให้ชนขอบบนล่าง) */}
+      {/* 2. Main Reader Content Area */}
       <main className="flex-1 flex items-center justify-center relative my-1 overflow-hidden w-full">
         <Button
           variant="outline"
@@ -171,7 +229,6 @@ export default function BookReaderPage({
           <ChevronLeft className="size-5" />
         </Button>
 
-        {/* คอนเทนต์หนังสือจัดกึ่งกลางพอดีเป๊ะ */}
         <div
           className="flex items-center justify-center w-full h-full transition-transform duration-200"
           style={{ transform: `scale(${zoom / 100})` }}

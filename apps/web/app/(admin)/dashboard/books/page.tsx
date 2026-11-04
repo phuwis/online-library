@@ -26,10 +26,21 @@ async function deleteBookAction(formData: FormData) {
 export default async function DashboardBooksPage() {
   const books = await prisma.book.findMany({
     orderBy: { createdAt: "desc" },
+    include: {
+      categories: {
+        include: {
+          category: true, // ดึงข้อมูลรายละเอียดของ Category ออกมาแสดง
+        },
+      },
+    },
+  });
+
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
   });
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto text-foreground">
+    <div className="space-y-8 max-w-7xl mx-auto text-foreground">
       {/* ส่วนหัวหน้าจัดการ และ Modal สำหรับเพิ่มหนังสือ */}
       <div className="flex items-center justify-between">
         <div>
@@ -40,7 +51,7 @@ export default async function DashboardBooksPage() {
             อัปโหลด จัดการ และกำหนดสถานะหนังสืออิเล็กทรอนิกส์
           </p>
         </div>
-        <AddBookModal />
+        <AddBookModal categories={categories} />
       </div>
 
       {/* ตารางแสดงรายการหนังสือ */}
@@ -117,7 +128,7 @@ export default async function DashboardBooksPage() {
                     {/* จัดระเบียบการแสดงผลปุ่มจัดการใน TD ให้สะอาดและถูกต้องตามหลัก HTML */}
                     <td className="p-4 pr-6 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <EditBookModal book={book} />
+                        <EditBookModal book={book} categories={categories} />
 
                         <form action={deleteBookAction}>
                           <input type="hidden" name="id" value={book.id} />

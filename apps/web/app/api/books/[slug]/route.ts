@@ -4,35 +4,44 @@ import fs from "fs/promises";
 import path from "path";
 
 export async function GET(
-  request: Request,
-  { params }: { params: { slug: string } },
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
+    const { slug } = await params;
+
     const book = await prisma.book.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+      },
     });
 
     if (!book) {
       return NextResponse.json(
-        { success: false, message: "ไม่พบหนังสือ" },
+        { success: false, error: "ไม่พบข้อมูลหนังสือ" },
         { status: 404 },
       );
     }
 
     return NextResponse.json({ success: true, book });
-  } catch (error) {
-    console.error("Error fetching book:", error);
+  } catch (error: any) {
+    console.error("Get book by slug error:", error);
     return NextResponse.json(
-      { success: false, message: "เกิดข้อผิดพลาดในการดึงข้อมูล" },
+      {
+        success: false,
+        error: error.message || "เกิดข้อผิดพลาดในการดึงข้อมูล",
+      },
       { status: 500 },
     );
   }
 }
 
-export async function PUT(
-  req: Request,
-  context: { params: { slug: string } }, // เปลี่ยนมารับแบบ Destructure ปกติเพื่อป้องกันปัญหา Promise ของ params ในบางเวอร์ชัน
-) {
+export async function PUT(req: Request, context: { params: { slug: string } }) {
   try {
     const id = context.params.slug;
 
@@ -49,6 +58,9 @@ export async function PUT(
     const slug = formData.get("slug") as string;
     const fileType = formData.get("fileType") as any;
     const status = formData.get("status") as any;
+
+    // 🌟 1. ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData (จะได้เป็น Array ของ ID หมวดหมู่)
+    const categoryIds = formData.getAll("categoryIds") as string[];
 
     const file = formData.get("file") as File;
     const coverFile = formData.get("cover") as File;
@@ -97,6 +109,7 @@ export async function PUT(
       coverUrl = `/uploads/${coverFileName}`;
     }
 
+    // 🌟 2. อัปเดตข้อมูลหนังสือพร้อมกับจัดการความสัมพันธ์หมวดหมู่ (Many-to-Many)
     const updatedBook = await prisma.book.update({
       where: { id },
       data: {
@@ -111,6 +124,21 @@ export async function PUT(
           status === "PUBLISHED" && !existingBook.publishedAt
             ? new Date()
             : existingBook.publishedAt,
+        categories: {
+          deleteMany: {}, // ลบความสัมพันธ์หมวดหมู่เดิมทั้งหมดทิ้งก่อน
+          create: categoryIds.map((catId) => ({
+            category: {
+              connect: { id: catId }, // เชื่อมโยงกับหมวดหมู่ใหม่ที่เลือก
+            },
+          })),
+        },
+      },
+      include: {
+        categories: {
+          include: {
+            category: true, // ดึงข้อมูลหมวดหมู่กลับมาด้วยเพื่อให้เห็นผลลัพธ์ทันที
+          },
+        },
       },
     });
 
