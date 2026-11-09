@@ -60,7 +60,14 @@ export function EditBookModal({
 
     const formData = new FormData(e.currentTarget);
 
+    // ล้างค่า categoryIds เดิมใน form แล้วใส่เข้าไปใหม่ให้ชัวร์ว่าเป็น Array ของ id ที่ถูกต้อง
+    formData.delete("categoryIds");
+    selectedCategoryIds.forEach((id) => {
+      formData.append("categoryIds", id);
+    });
+
     try {
+      // ✅ บังคับใช้ book.id ตรงๆ เพื่อป้องกันค่าถูกสลับ
       const res = await apiFetch(`/api/books/${book.id}`, {
         method: "PUT",
         body: formData,
