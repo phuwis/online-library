@@ -41,13 +41,17 @@ export async function GET(
   }
 }
 
-export async function PUT(req: Request, context: { params: { slug: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
   try {
-    const id = context.params.slug;
+    const resolvedParams = await params;
+    const slugParam = resolvedParams.slug;
 
-    if (!id) {
+    if (!slugParam) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสหนังสือ (ID)" },
+        { success: false, error: "ไม่พบรหัสหรือ slug ของหนังสือ" },
         { status: 400 },
       );
     }
@@ -55,18 +59,19 @@ export async function PUT(req: Request, context: { params: { slug: string } }) {
     const formData = await req.formData();
     const title = formData.get("title") as string;
     const author = formData.get("author") as string;
-    const slug = formData.get("slug") as string;
+    const newSlug = formData.get("slug") as string;
     const fileType = formData.get("fileType") as any;
     const status = formData.get("status") as any;
 
-    // 🌟 1. ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData (จะได้เป็น Array ของ ID หมวดหมู่)
+    // 🌟 ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData
     const categoryIds = formData.getAll("categoryIds") as string[];
 
     const file = formData.get("file") as File;
     const coverFile = formData.get("cover") as File;
 
+    // ค้นหาหนังสือเดิมจาก slug ที่ส่งมาใน URL params
     const existingBook = await prisma.book.findUnique({
-      where: { id },
+      where: { slug: slugParam },
     });
 
     if (!existingBook) {
@@ -85,7 +90,7 @@ export async function PUT(req: Request, context: { params: { slug: string } }) {
     // เช็คไฟล์หนังสือใหม่
     if (file && typeof file === "object" && "size" in file && file.size > 0) {
       const fileExt = path.extname(file.name) || ".pdf";
-      const fileName = `${slug || "book"}-${Date.now()}${fileExt}`;
+      const fileName = `${newSlug || slugParam || "book"}-${Date.now()}${fileExt}`;
       const filePath = path.join(uploadDir, fileName);
 
       const fileBytes = await file.arrayBuffer();
@@ -101,7 +106,7 @@ export async function PUT(req: Request, context: { params: { slug: string } }) {
       coverFile.size > 0
     ) {
       const coverExt = path.extname(coverFile.name) || ".jpg";
-      const coverFileName = `${slug || "book"}-cover-${Date.now()}${coverExt}`;
+      const coverFileName = `${newSlug || slugParam || "book"}-cover-${Date.now()}${coverExt}`;
       const coverFilePath = path.join(uploadDir, coverFileName);
 
       const coverBytes = await coverFile.arrayBuffer();
@@ -109,12 +114,12 @@ export async function PUT(req: Request, context: { params: { slug: string } }) {
       coverUrl = `/uploads/${coverFileName}`;
     }
 
-    // 🌟 2. อัปเดตข้อมูลหนังสือพร้อมกับจัดการความสัมพันธ์หมวดหมู่ (Many-to-Many)
+    // 🌟 อัปเดตข้อมูลหนังสือในฐานข้อมูลโดยใช้ id ของหนังสือเดิม
     const updatedBook = await prisma.book.update({
-      where: { id },
+      where: { id: existingBook.id },
       data: {
         title,
-        slug: slug || existingBook.slug,
+        slug: newSlug || existingBook.slug,
         author: author || "ไม่ระบุผู้แต่ง",
         fileUrl,
         coverUrl,
@@ -136,7 +141,7 @@ export async function PUT(req: Request, context: { params: { slug: string } }) {
       include: {
         categories: {
           include: {
-            category: true, // ดึงข้อมูลหมวดหมู่กลับมาด้วยเพื่อให้เห็นผลลัพธ์ทันที
+            category: true,
           },
         },
       },
