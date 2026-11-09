@@ -5,13 +5,13 @@ import path from "path";
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ slug: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { slug } = await params;
+    const { id } = await params;
 
     const book = await prisma.book.findUnique({
-      where: { slug },
+      where: { id },
       include: {
         categories: {
           include: {
@@ -30,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, book });
   } catch (error: any) {
-    console.error("Get book by slug error:", error);
+    console.error("Get book by id error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -43,15 +43,15 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ slug: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const resolvedParams = await params;
-    const slugParam = resolvedParams.slug;
+    const bookId = resolvedParams.id;
 
-    if (!slugParam) {
+    if (!bookId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสหรือ slug ของหนังสือ" },
+        { success: false, error: "ไม่พบรหัสหนังสือ" },
         { status: 400 },
       );
     }
@@ -63,15 +63,15 @@ export async function PUT(
     const fileType = formData.get("fileType") as any;
     const status = formData.get("status") as any;
 
-    // 🌟 ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData
+    // ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData
     const categoryIds = formData.getAll("categoryIds") as string[];
 
     const file = formData.get("file") as File;
     const coverFile = formData.get("cover") as File;
 
-    // ค้นหาหนังสือเดิมจาก slug ที่ส่งมาใน URL params
+    // ค้นหาหนังสือเดิมจาก id ที่ส่งมาใน URL params
     const existingBook = await prisma.book.findUnique({
-      where: { slug: slugParam },
+      where: { id: bookId },
     });
 
     if (!existingBook) {
@@ -84,13 +84,18 @@ export async function PUT(
     let fileUrl = existingBook.fileUrl;
     let coverUrl = existingBook.coverUrl;
 
+    // ตรวจสอบและสร้างโฟลเดอร์ uploads บน Server เสมอ ป้องกัน Error 502/Crash
     const uploadDir = path.resolve(process.cwd(), "public/uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+    } catch (mkdirError) {
+      console.error("Failed to create upload directory:", mkdirError);
+    }
 
     // เช็คไฟล์หนังสือใหม่
     if (file && typeof file === "object" && "size" in file && file.size > 0) {
       const fileExt = path.extname(file.name) || ".pdf";
-      const fileName = `${newSlug || slugParam || "book"}-${Date.now()}${fileExt}`;
+      const fileName = `book-${Date.now()}${fileExt}`;
       const filePath = path.join(uploadDir, fileName);
 
       const fileBytes = await file.arrayBuffer();
@@ -106,7 +111,7 @@ export async function PUT(
       coverFile.size > 0
     ) {
       const coverExt = path.extname(coverFile.name) || ".jpg";
-      const coverFileName = `${newSlug || slugParam || "book"}-cover-${Date.now()}${coverExt}`;
+      const coverFileName = `cover-${Date.now()}${coverExt}`;
       const coverFilePath = path.join(uploadDir, coverFileName);
 
       const coverBytes = await coverFile.arrayBuffer();
@@ -114,7 +119,7 @@ export async function PUT(
       coverUrl = `/uploads/${coverFileName}`;
     }
 
-    // 🌟 อัปเดตข้อมูลหนังสือในฐานข้อมูลโดยใช้ id ของหนังสือเดิม
+    // อัปเดตข้อมูลหนังสือในฐานข้อมูล
     const updatedBook = await prisma.book.update({
       where: { id: existingBook.id },
       data: {
@@ -130,10 +135,10 @@ export async function PUT(
             ? new Date()
             : existingBook.publishedAt,
         categories: {
-          deleteMany: {}, // ลบความสัมพันธ์หมวดหมู่เดิมทั้งหมดทิ้งก่อน
+          deleteMany: {}, // ลบความสัมพันธ์หมวดหมู่เดิมทั้งหมดก่อน
           create: categoryIds.map((catId) => ({
             category: {
-              connect: { id: catId }, // เชื่อมโยงกับหมวดหมู่ใหม่ที่เลือก
+              connect: { id: catId },
             },
           })),
         },
@@ -149,9 +154,9 @@ export async function PUT(
 
     return NextResponse.json({ success: true, book: updatedBook });
   } catch (error: any) {
-    console.error("Update error:", error);
+    console.error("Update error detail:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "เกิดข้อผิดพลาด" },
+      { success: false, error: error.message || "เกิดข้อผิดพลาดในการอัปเดต" },
       { status: 500 },
     );
   }
