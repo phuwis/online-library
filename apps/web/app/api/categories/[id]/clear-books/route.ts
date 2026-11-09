@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@repo/db";
 
-export async function POST(req: Request, context: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
-    const categoryId = context.params.id;
+    const resolvedParams = await params;
+    const categoryId = resolvedParams.id;
 
     if (!categoryId) {
       return NextResponse.json(
