@@ -5,13 +5,13 @@ import path from "path";
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
-    const { id } = await params;
+    const { slug } = await params;
 
     const book = await prisma.book.findUnique({
-      where: { id },
+      where: { slug },
       include: {
         categories: {
           include: {
@@ -30,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, book });
   } catch (error: any) {
-    console.error("Get book by id error:", error);
+    console.error("Get book by slug error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -43,15 +43,15 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const resolvedParams = await params;
-    const bookId = resolvedParams.id;
+    const slugParam = resolvedParams.slug;
 
-    if (!bookId) {
+    if (!slugParam) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสหนังสือ" },
+        { success: false, error: "ไม่พบ slug ของหนังสือ" },
         { status: 400 },
       );
     }
@@ -63,15 +63,14 @@ export async function PUT(
     const fileType = formData.get("fileType") as any;
     const status = formData.get("status") as any;
 
-    // ดึงค่า categoryIds ทั้งหมดที่ส่งมาจาก FormData
     const categoryIds = formData.getAll("categoryIds") as string[];
 
     const file = formData.get("file") as File;
     const coverFile = formData.get("cover") as File;
 
-    // ค้นหาหนังสือเดิมจาก id ที่ส่งมาใน URL params
+    // ค้นหาหนังสือเดิมจาก slug ใน URL params
     const existingBook = await prisma.book.findUnique({
-      where: { id: bookId },
+      where: { slug: slugParam },
     });
 
     if (!existingBook) {
@@ -84,7 +83,7 @@ export async function PUT(
     let fileUrl = existingBook.fileUrl;
     let coverUrl = existingBook.coverUrl;
 
-    // ตรวจสอบและสร้างโฟลเดอร์ uploads บน Server เสมอ ป้องกัน Error 502/Crash
+    // ตรวจสอบและสร้างโฟลเดอร์ uploads บน Server ป้องกัน Error
     const uploadDir = path.resolve(process.cwd(), "public/uploads");
     try {
       await fs.mkdir(uploadDir, { recursive: true });
@@ -119,7 +118,7 @@ export async function PUT(
       coverUrl = `/uploads/${coverFileName}`;
     }
 
-    // อัปเดตข้อมูลหนังสือในฐานข้อมูล
+    // อัปเดตข้อมูลหนังสือในฐานข้อมูลโดยอ้างอิงจาก ID เดิม แต่ใช้ Slug ตาม URL
     const updatedBook = await prisma.book.update({
       where: { id: existingBook.id },
       data: {
@@ -135,7 +134,7 @@ export async function PUT(
             ? new Date()
             : existingBook.publishedAt,
         categories: {
-          deleteMany: {}, // ลบความสัมพันธ์หมวดหมู่เดิมทั้งหมดก่อน
+          deleteMany: {},
           create: categoryIds.map((catId) => ({
             category: {
               connect: { id: catId },
