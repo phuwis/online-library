@@ -5,9 +5,20 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, sessionToken } from "@/lib/auth";
 
 export async function login(formData: FormData) {
+  const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected || password !== expected) redirect("/login?error=1");
+
+  const expectedUsername = process.env.ADMIN_USERNAME || "admin";
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+
+  // ตรวจสอบทั้ง Username และ Password
+  if (
+    !expectedPassword ||
+    username !== expectedUsername ||
+    password !== expectedPassword
+  ) {
+    redirect("/login?error=1");
+  }
 
   (await cookies()).set(SESSION_COOKIE, await sessionToken(), {
     httpOnly: true,

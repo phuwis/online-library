@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Plus, X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -128,7 +129,7 @@ export function AddBookModal({ categories }: { categories: Category[] }) {
     }
 
     try {
-      const res = await fetch("/api/books", {
+      const res = await apiFetch("/api/books", {
         method: "POST",
         body: formData,
       });

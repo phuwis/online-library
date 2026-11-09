@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Pencil, X, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -60,7 +61,7 @@ export function EditBookModal({
     const formData = new FormData(e.currentTarget);
 
     try {
-      const res = await fetch(`/api/books/${book.id}`, {
+      const res = await apiFetch(`/api/books/${book.id}`, {
         method: "PUT",
         body: formData,
       });

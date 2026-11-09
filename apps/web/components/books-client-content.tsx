@@ -67,6 +67,18 @@ export function BooksClientContent({
     initialCategory === "bookmarks",
   );
 
+  // เช็คขนาดหน้าจอ: ถ้าเป็นโทรศัพท์มือถือ (< 640px) ให้บังคับใช้ Grid view เสมอ
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) {
+        setViewMode("grid");
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem("bookmarked_slugs");
     if (saved) {
@@ -190,18 +202,19 @@ export function BooksClientContent({
   return (
     <div className="space-y-6">
       {/* Search Input & View Toggle */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 w-full max-w-2xl">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
+        <div className="relative flex-1 w-full">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="ค้นหาชื่อหนังสือ หรือ ผู้เขียน..."
-            className="pl-9 bg-background/50 w-full"
+            className="pl-9 bg-background/50 w-full text-sm"
           />
         </div>
 
-        <div className="flex items-center border border-border rounded-xl p-1 bg-background/50 shrink-0">
+        {/* 🌟 ซ่อนมุมมองตาราง (Table View) เมื่ออยู่บนมือถือ (< sm) */}
+        <div className="hidden sm:flex items-center border border-border rounded-xl p-1 bg-background/50 shrink-0">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
             size="sm"
@@ -224,7 +237,7 @@ export function BooksClientContent({
       </div>
 
       {/* หมวดหมู่ รวมปุ่ม บุ๊กมาร์ก */}
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-border/60">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 border-t border-border/60">
         <button type="button" onClick={() => handleCategoryClick(undefined)}>
           <Badge
             variant={
@@ -281,33 +294,33 @@ export function BooksClientContent({
       {/* แสดงรายการหนังสือ */}
       <div className="pt-2">
         {displayedItems.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground text-sm">
             {isBookmarksTab
               ? "ยังไม่มีหนังสือที่บุ๊กมาร์กไว้"
               : "ไม่พบหนังสือที่คุณค้นหา"}
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {displayedItems.map((book) => {
               const isBookmarked = bookmarkedSlugs.includes(book.slug);
               return (
                 <Link
                   key={book.id}
                   href={`/books/${book.slug}`}
-                  className="group relative flex flex-col bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                  className="group relative flex flex-col bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-2.5 sm:p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 >
-                  <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-muted mb-4 shadow-sm">
+                  <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-muted mb-3 shadow-sm">
                     {/* ปุ่มธงเหลืองมุมซ้ายบน */}
                     <button
                       type="button"
                       onClick={(e) => toggleBookmark(e, book.slug)}
-                      className="absolute top-0 left-3 z-20 p-1 hover:scale-110 transition-transform"
+                      className="absolute top-0 left-2 sm:left-3 z-20 p-1 hover:scale-110 transition-transform"
                       title={
                         isBookmarked ? "เอาบุ๊กมาร์กออก" : "เพิ่มบุ๊กมาร์ก"
                       }
                     >
                       <Bookmark
-                        className={`size-7 ${
+                        className={`size-6 sm:size-7 ${
                           isBookmarked
                             ? "text-yellow-500 fill-yellow-500 drop-shadow-md"
                             : "text-white/70 fill-black/20 hover:text-yellow-400"
@@ -329,10 +342,10 @@ export function BooksClientContent({
                     )}
                   </div>
                   <div className="flex flex-col flex-1 justify-between space-y-1">
-                    <h3 className="font-semibold text-sm text-card-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                    <h3 className="font-semibold text-xs sm:text-sm text-card-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                       {book.title}
                     </h3>
-                    <p className="text-xs text-muted-foreground truncate mt-1">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5">
                       {book.author}
                     </p>
                   </div>
@@ -341,7 +354,7 @@ export function BooksClientContent({
             })}
           </div>
         ) : (
-          /* Table View */
+          /* Table View (แสดงเฉพาะเมื่อขยายจอกว้าง sm ขึ้นไปเท่านั้น) */
           <div className="border border-border rounded-xl overflow-hidden bg-background/40">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -397,8 +410,6 @@ export function BooksClientContent({
                           href={`/books/${book.slug}`}
                           className="hover:text-primary transition-colors line-clamp-1"
                         >
-                          {" "}
-                          {/* 🌟 ปรับลิงก์ในตารางไปด้วย */}
                           {book.title}
                         </Link>
                       </td>
@@ -420,11 +431,11 @@ export function BooksClientContent({
 
         {/* Pagination UI */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-4 border-t border-border">
-          <div className="text-xs text-muted-foreground font-medium">
+          <div className="text-xs text-muted-foreground font-medium order-2 sm:order-1">
             {startItem}-{endItem} จาก {displayTotal} เล่ม
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-1 sm:order-2">
             <Button
               variant="outline"
               size="icon"
@@ -449,14 +460,13 @@ export function BooksClientContent({
               <ChevronRight className="size-4" />
             </Button>
 
-            <div className="relative ml-4">
+            <div className="relative ml-2 sm:ml-4">
               <button
                 type="button"
                 onClick={() => setShowLimitDropdown((prev) => !prev)}
                 className="flex items-center justify-between px-3 py-1.5 text-xs border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors w-28"
               >
-                <span>{limit} / หน้า</span>{" "}
-                {/* 🌟 เปลี่ยนคำว่า page เป็น หน้า */}
+                <span>{limit} / หน้า</span>
                 <Search className="size-3 text-muted-foreground" />
               </button>
 
@@ -473,8 +483,7 @@ export function BooksClientContent({
                           : "text-popover-foreground"
                       }`}
                     >
-                      <span>{val} / หน้า</span>{" "}
-                      {/* 🌟 เปลี่ยนคำว่า page เป็น หน้า */}
+                      <span>{val} / หน้า</span>
                       {limit === val && <Check className="size-3" />}
                     </button>
                   ))}

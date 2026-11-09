@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { RotateCcw, X, Loader2, AlertTriangle, BookOpen } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
 
 interface Book {
   id: string;
@@ -40,7 +41,7 @@ export function ResetCategoryBooksModal({ category }: { category: Category }) {
 
     try {
       // ส่งคำขอไปยัง API เพื่อปลดหมวดหมู่นี้ออกจากหนังสือทุกเล่ม
-      const res = await fetch(`/api/categories/${category.id}/clear-books`, {
+      const res = await apiFetch(`/api/categories/${category.id}/clear-books`, {
         method: "POST",
       });
 

@@ -50,6 +50,9 @@ export default function BookReaderPage({
   const bookRef = useRef<any>(null);
   const [hasInitializedPage, setHasInitializedPage] = useState(false);
 
+  // 🌟 State ตรวจสอบว่าเป็นจอมือถือหรือไม่ (< 768px)
+  const [isMobile, setIsMobile] = useState(false);
+
   // State สำหรับ Dropdown เมนู
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -68,6 +71,16 @@ export default function BookReaderPage({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [scrollPos, setScrollPos] = useState({ left: 0, top: 0 });
   const viewportRef = useRef<HTMLDivElement | null>(null);
+
+  // เช็คขนาดหน้าจอเพื่อสลับโหมด มือถือ / Desktop
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // โหลดสถานะบุ๊กมาร์กภาพรวมเล่มจาก localStorage
   useEffect(() => {
@@ -381,8 +394,6 @@ export default function BookReaderPage({
             style={{
               transform: `scale(${currentScale})`,
               transformOrigin: "center center",
-              width: `${800 * currentScale}px`,
-              height: `${560 * currentScale}px`,
               minWidth: "100%",
               minHeight: "100%",
             }}
@@ -402,41 +413,48 @@ export default function BookReaderPage({
               }
             >
               {numPages > 0 && (
-                <HTMLFlipBook
-                  width={400}
-                  height={560}
-                  size="fixed"
-                  minWidth={300}
-                  maxWidth={600}
-                  minHeight={400}
-                  maxHeight={800}
-                  drawShadow={true}
-                  usePortrait={false}
-                  startPage={pageNumber > 0 ? pageNumber - 1 : 0}
-                  showCover={false}
-                  mobileScrollSupport={true}
-                  onFlip={onPageFlip}
-                  ref={bookRef}
-                  className="shadow-2xl rounded-sm mx-auto"
-                >
-                  {Array.from(new Array(numPages), (_, index) => (
-                    <div
-                      key={`page_${index + 1}`}
-                      className="bg-white shadow-md relative overflow-hidden"
-                      style={{ width: "400px", height: "560px" }}
-                    >
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Page
-                          pageNumber={index + 1}
-                          width={400}
-                          scale={2.0}
-                          renderTextLayer={false}
-                          renderAnnotationLayer={false}
-                        />
+                <div className="relative">
+                  {/* 🌟 ชั้นกระจกใส (Overlay) ปิดทับไม่ให้คลิกหรือปัดที่ตัวหนังสือเพื่อเปลี่ยนหน้าโดยตรง */}
+                  <div className="absolute inset-0 z-30 pointer-events-auto cursor-default" />
+
+                  <HTMLFlipBook
+                    width={400}
+                    height={560}
+                    size="fixed"
+                    minWidth={300}
+                    maxWidth={800}
+                    minHeight={400}
+                    maxHeight={1000}
+                    drawShadow={true}
+                    usePortrait={isMobile}
+                    startPage={pageNumber > 0 ? pageNumber - 1 : 0}
+                    showCover={false}
+                    mobileScrollSupport={false} // ปิด Touch/Swipe สไลด์หน้าจอ
+                    swipeDistance={0} // ปิดการปัดเปลี่ยนหน้า
+                    clickEventForward={false}
+                    onFlip={onPageFlip}
+                    ref={bookRef}
+                    className="shadow-2xl rounded-sm mx-auto"
+                  >
+                    {Array.from(new Array(numPages), (_, index) => (
+                      <div
+                        key={`page_${index + 1}`}
+                        className="bg-white shadow-md relative overflow-hidden"
+                        style={{ width: "400px", height: "560px" }}
+                      >
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Page
+                            pageNumber={index + 1}
+                            width={400}
+                            scale={2.0} // ความคมชัดสูง
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </HTMLFlipBook>
+                    ))}
+                  </HTMLFlipBook>
+                </div>
               )}
             </Document>
           </div>

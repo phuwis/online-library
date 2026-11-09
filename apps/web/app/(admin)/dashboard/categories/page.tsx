@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
-import { Trash2, Plus, FolderTree, Loader2 } from "lucide-react";
+import { Trash2, Plus, FolderTree, Loader2, Search } from "lucide-react";
 import { ResetCategoryBooksModal } from "@/components/reset-category-book-modal";
+import { EditCategoryModal } from "@/components/edit-category-modal"; // 🌟 Import Modal แก้ไข
+import { apiFetch } from "@/lib/api-client";
 
 interface Book {
   id: string;
@@ -23,7 +25,7 @@ interface Category {
   _count: {
     books: number;
   };
-  books?: BookCategoryRelation[]; // 🌟 เพิ่มบรรทัดนี้รองรับรายชื่อหนังสือ
+  books?: BookCategoryRelation[];
 }
 
 export default function CategoriesPage() {
@@ -32,8 +34,8 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // ฟังก์ชันดึงข้อมูลหมวดหมู่ผ่าน API GET /api/categories
   const fetchCategories = async () => {
     try {
       const res = await fetch("/api/categories");
@@ -52,7 +54,6 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  // ฟังก์ชันเพิ่มหมวดหมู่ผ่าน API POST /api/categories
   async function handleAddCategory(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
@@ -63,7 +64,7 @@ export default function CategoriesPage() {
     const slug = formData.get("slug");
 
     try {
-      const res = await fetch("/api/categories", {
+      const res = await apiFetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, slug }),
@@ -72,7 +73,7 @@ export default function CategoriesPage() {
 
       if (data.success) {
         (e.target as HTMLFormElement).reset();
-        fetchCategories(); // โหลดข้อมูลใหม่
+        fetchCategories();
         router.refresh();
       } else {
         setErrorMsg(data.error || "เกิดข้อผิดพลาดในการสร้างหมวดหมู่");
@@ -84,18 +85,17 @@ export default function CategoriesPage() {
     }
   }
 
-  // ฟังก์ชันลบหมวดหมู่ผ่าน API DELETE /api/categories/[id]
   async function handleDeleteCategory(id: string) {
     if (!confirm("คุณต้องการลบหมวดหมู่นี้ใช่หรือไม่?")) return;
 
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await apiFetch(`/api/categories/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
 
       if (data.success) {
-        fetchCategories(); // โหลดข้อมูลใหม่
+        fetchCategories();
         router.refresh();
       } else {
         alert(data.error || "ไม่สามารถลบได้");
@@ -105,12 +105,21 @@ export default function CategoriesPage() {
     }
   }
 
+  const filteredCategories = useMemo(() => {
+    if (!searchTerm.trim()) return categories;
+    const lowerKeyword = searchTerm.toLowerCase();
+    return categories.filter(
+      (cat) =>
+        cat.name.toLowerCase().includes(lowerKeyword) ||
+        cat.slug.toLowerCase().includes(lowerKeyword),
+    );
+  }, [categories, searchTerm]);
+
   return (
     <div
       className="space-y-8"
       style={{ fontFamily: '"PrimaryFont", sans-serif' }}
     >
-      {/* Header Title */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-primary">
           <FolderTree className="size-6" />
@@ -124,7 +133,6 @@ export default function CategoriesPage() {
         </p>
       </div>
 
-      {/* Error Message */}
       {errorMsg && (
         <div className="p-3 text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-lg">
           {errorMsg}
@@ -166,11 +174,35 @@ export default function CategoriesPage() {
         </form>
       </div>
 
+      {/* ช่องค้นหาหมวดหมู่ */}
+      <div className="bg-card border border-border/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ค้นหาชื่อหมวดหมู่ หรือ Slug..."
+            className="pl-9 bg-background/50"
+          />
+        </div>
+        {searchTerm && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSearchTerm("")}
+            className="shrink-0 text-xs"
+          >
+            ล้างคำค้นหา
+          </Button>
+        )}
+      </div>
+
       {/* Table Section ตารางแสดงรายการหมวดหมู่ */}
       <div className="bg-card border border-border/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-border/60 bg-muted/20 flex items-center justify-between">
           <h3 className="font-semibold text-sm text-foreground">
-            รายการหมวดหมู่ทั้งหมด ({categories.length})
+            รายการหมวดหมู่ทั้งหมด ({filteredCategories.length} จาก{" "}
+            {categories.length})
           </h3>
         </div>
 
@@ -195,17 +227,17 @@ export default function CategoriesPage() {
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
-              ) : categories.length === 0 ? (
+              ) : filteredCategories.length === 0 ? (
                 <tr>
                   <td
                     colSpan={4}
                     className="text-center py-12 text-muted-foreground"
                   >
-                    ยังไม่มีข้อมูลหมวดหมู่ในระบบ
+                    ไม่พบหมวดหมู่ที่ตรงกับการค้นหา
                   </td>
                 </tr>
               ) : (
-                categories.map((cat) => {
+                filteredCategories.map((cat) => {
                   const hasBooks = cat._count.books > 0;
                   return (
                     <tr
@@ -231,7 +263,12 @@ export default function CategoriesPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {/* 🌟 ปุ่มรีเซ็ต / เคลียร์หมวดหมู่ออกจากหนังสือทุกเล่ม */}
+                          {/* 🌟 ปุ่ม Edit Modal */}
+                          <EditCategoryModal
+                            category={cat}
+                            onUpdated={fetchCategories}
+                          />
+
                           <ResetCategoryBooksModal category={cat} />
 
                           {hasBooks ? (

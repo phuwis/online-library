@@ -21,43 +21,46 @@ export default function PublicLayout({
         />
       </div>
 
-      {/* Global Public Header Bar */}
+      {/* Global Public Header Bar (ปรับ padding และความยืดหยุ่นบนมือถือ) */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-background/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Logo & Agency Title */}
-          <Link href="/" className="flex items-center gap-3 group shrink-0">
-            <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-primary/5 p-1 border border-primary/10 shrink-0 shadow-sm">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-8 h-16 flex items-center justify-between gap-2">
+          {/* Logo & Agency Title (ป้องกันข้อความดันล้นจอด้วย min-w-0 และ truncate) */}
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 group shrink min-w-0"
+          >
+            <div className="relative size-9 sm:size-10 flex items-center justify-center rounded-lg bg-primary/5 p-1 border border-primary/10 shrink-0 shadow-sm">
               <img
                 src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8JlhtBJqp7gVwX4qm2t5OGY8xHw1TcPrJYtbIIMC3kQ3rzBkd67svfEP5&s=10"
                 alt="ตราสัญลักษณ์สำนักงาน"
-                className="w-8 h-8 object-contain"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm md:text-base font-bold tracking-tight text-foreground group-hover:text-primary transition-colors leading-snug">
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs sm:text-sm md:text-base font-bold tracking-tight text-foreground group-hover:text-primary transition-colors leading-tight truncate">
                 ห้องสมุดกระทรวงมหาดไทย
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground truncate leading-tight">
                 สถาบันดำรงราชานุภาพ สำนักงานปลัดกระทรวงมหาดไทย
               </span>
             </div>
           </Link>
 
           {/* Navigation & Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Nav Menu Items */}
             <nav className="flex items-center gap-1">
               <Button
                 asChild
                 variant="ghost"
                 size="sm"
-                className="text-xs font-medium"
+                className="text-xs font-medium px-2.5 sm:px-3"
               >
                 <Link href="/books">หนังสือทั้งหมด</Link>
               </Button>
             </nav>
 
-            <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block" />
+            <div className="h-4 w-[1px] bg-border mx-0.5 hidden sm:block" />
 
             {/* Theme Toggle */}
             <ThemeToggle />
@@ -65,13 +68,13 @@ export default function PublicLayout({
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 relative z-10 w-full max-w-6xl mx-auto px-4 md:px-8 py-8">
+      {/* Main Content Area (ปรับ Padding ด้านข้างให้พอดีบนจอมือถือ) */}
+      <main className="flex-1 relative z-10 w-full max-w-6xl mx-auto px-3 sm:px-6 md:px-8 py-6 sm:py-8">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-muted-foreground relative z-10 bg-background/50 backdrop-blur-sm">
+      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 py-6 px-4 text-center text-xs text-muted-foreground relative z-10 bg-background/50 backdrop-blur-sm">
         © {new Date().getFullYear()} สถาบันดำรงราชานุภาพ
         สำนักงานปลัดกระทรวงมหาดไทย. All rights reserved.
       </footer>

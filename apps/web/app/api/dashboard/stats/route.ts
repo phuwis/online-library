@@ -1,18 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@repo/db";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { searchParams } = new URL(request.url);
+    const daysParam = searchParams.get("days");
+    const days = daysParam ? parseInt(daysParam, 10) : 7;
+    const limitDays = isNaN(days) ? 7 : days;
+
+    // 🌟 ดึงวันที่ปัจจุบันตามเวลาประเทศไทย (UTC+7)
+    const nowThaiStr = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Bangkok",
+    });
+    const todayThai = new Date(nowThaiStr);
+    todayThai.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(todayThai);
+    startDate.setDate(startDate.getDate() - (limitDays - 1));
 
     const siteStats = await prisma.siteStatsDaily.findMany({
       where: {
-        date: { gte: thirtyDaysAgo },
+        date: { gte: startDate },
       },
       orderBy: {
         date: "asc",
       },
+    });
+
+    const statsMap = new Map();
+    siteStats.forEach((stat) => {
+      // แปลงวันที่ใน DB ให้แสดงผลตรงกับโซนเวลาไทย
+      const statDateStr = new Date(stat.date).toLocaleDateString("en-CA", {
+        timeZone: "Asia/Bangkok",
+      }); // ได้รูปแบบ YYYY-MM-DD
+      statsMap.set(statDateStr, stat);
     });
 
     let totalSessions = 0;
@@ -23,6 +46,31 @@ export async function GET() {
       totalSeconds += stat.totalSec;
     });
 
+    // สร้างอาเรย์ย้อนหลังตามเวลาไทยจริง
+    const formattedDailyStats = [];
+    for (let i = limitDays - 1; i >= 0; i--) {
+      const d = new Date(todayThai);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString("en-CA", {
+        timeZone: "Asia/Bangkok",
+      });
+
+      const existing = statsMap.get(dateStr);
+      if (existing) {
+        formattedDailyStats.push({
+          date: dateStr,
+          sessions: existing.sessions,
+          totalSec: Number(existing.totalSec),
+        });
+      } else {
+        formattedDailyStats.push({
+          date: dateStr,
+          sessions: 0,
+          totalSec: 0,
+        });
+      }
+    }
+
     const totalSecondsNumber = Number(totalSeconds);
     const avgSecondsPerSession =
       totalSessions > 0 ? Math.round(totalSecondsNumber / totalSessions) : 0;
@@ -30,7 +78,7 @@ export async function GET() {
     const topBooksRaw = await prisma.bookStatsDaily.groupBy({
       by: ["bookId"],
       where: {
-        date: { gte: thirtyDaysAgo },
+        date: { gte: startDate },
       },
       _sum: {
         sessions: true,
@@ -60,16 +108,10 @@ export async function GET() {
         title: book?.title || "ไม่ระบุชื่อหนังสือ",
         author: book?.author || "ไม่ระบุผู้แต่ง",
         sessions: item._sum.sessions || 0,
-        totalSec: Number(item._sum.totalSec || 0), // 🌟 แปลง BigInt เป็น Number ที่นี่
+        totalSec: Number(item._sum.totalSec || 0),
         finished: item._sum.finished || 0,
       };
     });
-
-    // 🌟 แปลง dailyStats ที่มี totalSec ชนิด BigInt ให้เป็น Number ธรรมดาก่อนส่ง JSON
-    const formattedDailyStats = siteStats.map((stat) => ({
-      ...stat,
-      totalSec: Number(stat.totalSec),
-    }));
 
     return NextResponse.json({
       success: true,

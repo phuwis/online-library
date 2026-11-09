@@ -43,8 +43,8 @@ export function ContinueReadingSection({ allBooks }: { allBooks: BookItem[] }) {
     return `อ่านไปแล้ว ${mins} นาที`;
   };
 
-  const displayedBooks = showAll ? continueBooks : continueBooks.slice(0, 3);
-  const hasMore = continueBooks.length > 3;
+  const displayedBooks = showAll ? continueBooks : continueBooks.slice(0, 4);
+  const hasMore = continueBooks.length > 4;
 
   return (
     <section className="space-y-6">
