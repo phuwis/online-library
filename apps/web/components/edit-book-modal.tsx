@@ -68,7 +68,7 @@ export function EditBookModal({
 
     try {
       // ✅ บังคับใช้ book.id ตรงๆ เพื่อป้องกันค่าถูกสลับ
-      const res = await apiFetch(`/api/books/${book.id}`, {
+      const res = await apiFetch(`/api/books/${book.slug}`, {
         method: "PUT",
         body: formData,
       });
