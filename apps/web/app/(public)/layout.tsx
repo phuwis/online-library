@@ -55,14 +55,6 @@ export default function PublicLayout({
               >
                 <Link href="/books">หนังสือทั้งหมด</Link>
               </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="text-xs font-medium"
-              >
-                <Link href="/dashboard">จัดการระบบ</Link>
-              </Button>
             </nav>
 
             <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block" />

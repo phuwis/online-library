@@ -1,9 +1,21 @@
 import { prisma, type Prisma } from "@repo/db";
 
-type ListParams = { category?: string; q?: string; cursor?: string; take?: number };
+type ListParams = {
+  category?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+  take?: number;
+};
 
-/** รายการหนังสือที่เผยแพร่แล้ว — cursor pagination (ห้ามใช้ skip ลึกๆ) */
-export async function listPublishedBooks({ category, q, cursor, take = 24 }: ListParams) {
+/** รายการหนังสือที่เผยแพร่แล้ว — รองรับ Limit และ Pagination แบบหน้า */
+export async function listPublishedBooks({
+  category,
+  q,
+  page = 1,
+  limit = 10,
+  take,
+}: ListParams) {
   const where: Prisma.BookWhereInput = {
     status: "PUBLISHED",
     ...(category && { categories: { some: { category: { slug: category } } } }),
@@ -14,16 +26,38 @@ export async function listPublishedBooks({ category, q, cursor, take = 24 }: Lis
       ],
     }),
   };
-  const rows = await prisma.book.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: take + 1,
-    ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-    select: { id: true, title: true, slug: true, author: true, coverUrl: true },
-  });
-  const hasMore = rows.length > take;
-  const items = hasMore ? rows.slice(0, take) : rows;
-  return { items, nextCursor: hasMore ? items[items.length - 1]!.id : null };
+
+  const queryTake = take !== undefined ? take : limit;
+  const skip = take !== undefined ? 0 : (page - 1) * limit;
+
+  // ดึงข้อมูลรายการหนังสือและนับจำนวนทั้งหมดพร้อมกัน
+  const [items, total] = await Promise.all([
+    prisma.book.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        author: true,
+        coverUrl: true,
+        fileType: true,
+      },
+    }),
+    prisma.book.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    items,
+    total,
+    totalPages,
+    currentPage: page,
+    limit: queryTake,
+  };
 }
 
 export function getPublishedBook(slug: string) {
@@ -33,7 +67,6 @@ export function getPublishedBook(slug: string) {
   });
 }
 
-/** สำหรับ dashboard */
 export function listBooksForAdmin(take = 100) {
   return prisma.book.findMany({
     orderBy: { createdAt: "desc" },
