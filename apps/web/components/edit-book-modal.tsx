@@ -1,28 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
-import { Pencil, X, Loader2 } from "lucide-react";
+import { Textarea } from "@repo/ui/components/textarea";
+import {
+  Pencil,
+  X,
+  Loader2,
+  Bold,
+  Heading1,
+  Heading2,
+  List,
+  Quote,
+  Minus,
+} from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { Book, Category } from "@/types/book";
+import { MarkdownPreview } from "./markdown-preview";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface Book {
-  id: string;
-  title: string;
-  author: string | null;
-  slug: string;
-  fileType: string;
-  status: string;
-  categories?: any[]; // รองรับข้อมูลความสัมพันธ์หมวดหมู่
-}
+// รายการหมวดหมู่สากล DDC (Dewey Decimal Classification)
+const DDC_OPTIONS = [
+  { value: "GENERAL_000", label: "000 - เบ็ดเตล็ด / ความรู้ทั่วไป" },
+  { value: "PHILOSOPHY_100", label: "100 - ปรัชญาและจิตวิทยา" },
+  { value: "RELIGION_200", label: "200 - ศาสนา" },
+  { value: "SOCIAL_SCIENCES_300", label: "300 - สังคมศาสตร์" },
+  { value: "LANGUAGE_400", label: "400 - ภาษาศาสตร์" },
+  { value: "SCIENCE_500", label: "500 - วิทยาศาสตร์และคณิตศาสตร์" },
+  { value: "TECHNOLOGY_600", label: "600 - เทคโนโลยี / วิทยาศาสตร์ประยุกต์" },
+  { value: "ARTS_RECREATION_700", label: "700 - ศิลปะและการบันเทิง / กีฬา" },
+  { value: "LITERATURE_800", label: "800 - วรรณกรรม / วรรณคดี" },
+  { value: "HISTORY_GEOGRAPHY_900", label: "900 - ภูมิศาสตร์และประวัติศาสตร์" },
+];
 
 export function EditBookModal({
   book,
@@ -36,6 +47,10 @@ export function EditBookModal({
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // State ควบคุมค่า description เพื่อให้ปุ่ม Toolbar แทรกข้อความได้ถูกต้อง
+  const [description, setDescription] = useState(book.description || "");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ดึงค่าหมวดหมู่เดิมของหนังสือมาเป็นค่าเริ่มต้นใน State
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
@@ -53,12 +68,44 @@ export function EditBookModal({
     setMounted(true);
   }, []);
 
+  // ฟังก์ชันช่วยแทรก Markdown จาก Toolbar อัตโนมัติ
+  const insertMarkdown = (
+    syntaxBefore: string,
+    syntaxAfter = "",
+    defaultText = "",
+  ) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end) || defaultText;
+
+    const replacement = `${syntaxBefore}${selectedText}${syntaxAfter}`;
+    const newText =
+      text.substring(0, start) + replacement + text.substring(end);
+
+    setDescription(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + syntaxBefore.length,
+        start + syntaxBefore.length + selectedText.length,
+      );
+    }, 0);
+  };
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
 
     const formData = new FormData(e.currentTarget);
+
+    // บังคับส่งค่า description จาก state ควบคุม
+    formData.set("description", description);
 
     // ล้างค่า categoryIds เดิมใน form แล้วใส่เข้าไปใหม่ให้ชัวร์ว่าเป็น Array ของ id ที่ถูกต้อง
     formData.delete("categoryIds");
@@ -67,7 +114,6 @@ export function EditBookModal({
     });
 
     try {
-      // ✅ บังคับใช้ book.id ตรงๆ เพื่อป้องกันค่าถูกสลับ
       const res = await apiFetch(`/api/books/${book.slug}`, {
         method: "PUT",
         body: formData,
@@ -94,6 +140,7 @@ export function EditBookModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 shrink-0">
           <h2 className="text-lg font-semibold">แก้ไขข้อมูลหนังสือ</h2>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="rounded-full"
@@ -137,19 +184,94 @@ export function EditBookModal({
             />
           </div>
 
+          {/* ข้อมูลบรรณานุกรมใหม่ 5 ข้อ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                สำนักที่ตีพิมพ์ (Publisher)
+              </label>
+              <Input
+                name="publisher"
+                defaultValue={book.publisher || ""}
+                placeholder="เช่น สำนักพิมพ์..."
+                className="bg-background/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                ปีและจำนวนที่ตีพิมพ์ (Publication Info)
+              </label>
+              <Input
+                name="publicationInfo"
+                defaultValue={book.publicationInfo || ""}
+                placeholder="เช่น 2567 / พิมพ์ครั้งที่ 1"
+                className="bg-background/50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                จำนวนหน้า (Page Count)
+              </label>
+              <Input
+                name="pageCount"
+                defaultValue={book.pageCount || ""}
+                placeholder="เช่น 150 หน้า หรือ IV, 120"
+                className="bg-background/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                จังหวัดที่ตีพิมพ์ (Publishing Province)
+              </label>
+              <Input
+                name="publishingProvince"
+                defaultValue={book.publishingProvince || ""}
+                placeholder="เช่น กรุงเทพมหานคร"
+                className="bg-background/50"
+              />
+            </div>
+          </div>
+
+          {/* หมวดหมู่สากล DDC */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              หมวดหมู่สากล DDC *
+            </label>
+            <select
+              name="ddc"
+              defaultValue={book.ddc || "GENERAL_000"}
+              required
+              className="w-full h-10 px-3 rounded-lg border border-input bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-sm transition-all"
+            >
+              {DDC_OPTIONS.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  className="bg-card text-foreground py-1"
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground">
-                    หมวดหมู่หนังสือ * (เลือกได้มากกว่า 1 หมวดหมู่)
+                    หมวดหมู่หนังสือทั่วไป * (เลือกได้มากกว่า 1 หมวดหมู่)
                   </label>
                   <span className="text-[10px] text-primary font-medium">
                     เลือกแล้ว {selectedCategoryIds.length} หมวดหมู่
                   </span>
                 </div>
 
-                {/* 1. แสดงรายการที่เลือกไว้แล้วเป็น Badge ด้านบน */}
                 {selectedCategoryIds.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2 bg-muted/30 border border-border/60 rounded-xl">
                     {selectedCategoryIds.map((id) => {
@@ -180,7 +302,6 @@ export function EditBookModal({
                   </div>
                 )}
 
-                {/* 2. ช่องพิมพ์ค้นหาหมวดหมู่ */}
                 <div className="relative">
                   <input
                     type="text"
@@ -204,7 +325,6 @@ export function EditBookModal({
                   </svg>
                 </div>
 
-                {/* 3. กล่องรายการหมวดหมู่ที่กรองตามคำค้นหา */}
                 <div className="border border-input rounded-xl bg-background/50 max-h-44 overflow-y-auto p-1.5 space-y-1">
                   {categories && categories.length > 0 ? (
                     categories
@@ -260,17 +380,101 @@ export function EditBookModal({
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Slug (URL Path)
-              </label>
-              <Input
-                name="slug"
-                defaultValue={book.slug}
-                className="bg-background/50"
-              />
+          {/* 🌟 รายละเอียดหนังสือ พร้อม Toolbar ช่วยกดจัดรูปแบบ (Markdown Editor แบบง่าย) */}
+          <div className="space-y-4">
+            <label className="text-xs font-medium text-foreground">
+              รายละเอียดหนังสือ / เรื่องย่อ (รองรับ Markdown)
+            </label>
+
+            {/* 🛠️ Toolbar สำหรับผู้ใช้ที่ไม่ถนัดเขียนโค้ด */}
+            <div className="flex flex-wrap items-center gap-1 bg-muted/60 p-1.5 rounded-t-xl border border-border">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs font-medium"
+                onClick={() => insertMarkdown("# ", "", "หัวข้อหลัก")}
+              >
+                <Heading1 className="size-3.5 mr-1" /> หัวข้อ 1
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs font-medium"
+                onClick={() => insertMarkdown("### ", "", "หัวข้อย่อย")}
+              >
+                <Heading2 className="size-3.5 mr-1" /> หัวข้อ 2
+              </Button>
+              <div className="h-4 w-[1px] bg-border mx-1" />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => insertMarkdown("**", "**", "ข้อความตัวหนา")}
+              >
+                <Bold className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => insertMarkdown("* ", "", "รายการย่อย")}
+              >
+                <List className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => insertMarkdown("> ", "", "ข้อความอ้างอิง")}
+              >
+                <Quote className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => insertMarkdown("\n---\n", "", "")}
+              >
+                <Minus className="size-3.5" />
+              </Button>
             </div>
+
+            {/* ช่องกรอกข้อความ (Textarea) */}
+            <Textarea
+              ref={textareaRef}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+              placeholder="พิมพ์รายละเอียด หรือกดปุ่มเครื่องมือด้านบน..."
+              className="rounded-t-none bg-background/55 text-xs sm:text-sm leading-relaxed font-mono"
+            />
+
+            {/* 🌟 ช่องแสดงตัวอย่าง (Preview Box) แบบ Real-time */}
+            <div className="space-y-1.5 pt-2">
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                🔍 หน้าตาที่จะแสดงผลจริงฝั่งผู้ใช้งาน (Live Preview):
+              </span>
+              <MarkdownPreview content={description} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Slug (URL Path)
+            </label>
+            <Input
+              name="slug"
+              defaultValue={book.slug}
+              className="bg-background/50"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -305,10 +509,14 @@ export function EditBookModal({
               <select
                 name="fileType"
                 defaultValue={book.fileType}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-sm"
+                className="w-full h-10 px-3 rounded-lg border border-input bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-sm transition-all"
               >
-                <option value="PDF">PDF</option>
-                <option value="EPUB">EPUB</option>
+                <option value="PDF" className="bg-card text-foreground">
+                  PDF
+                </option>
+                <option value="EPUB" className="bg-card text-foreground">
+                  EPUB
+                </option>
               </select>
             </div>
 
@@ -319,10 +527,14 @@ export function EditBookModal({
               <select
                 name="status"
                 defaultValue={book.status}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-sm"
+                className="w-full h-10 px-3 rounded-lg border border-input bg-background/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-sm transition-all"
               >
-                <option value="PUBLISHED">เผยแพร่แล้ว (Published)</option>
-                <option value="DRAFT">ฉบับร่าง (Draft)</option>
+                <option value="PUBLISHED" className="bg-card text-foreground">
+                  เผยแพร่แล้ว (Published)
+                </option>
+                <option value="DRAFT" className="bg-card text-foreground">
+                  ฉบับร่าง (Draft)
+                </option>
               </select>
             </div>
           </div>

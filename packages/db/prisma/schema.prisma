@@ -11,25 +11,51 @@ datasource db {
 // ───────────── ข้อมูลหลัก (โตช้า) ─────────────
 
 model Book {
-  id          String     @id @default(cuid())
-  title       String
-  slug        String     @unique
-  author      String
-  description String?
-  coverUrl    String?
-  fileUrl     String // ไฟล์ epub/pdf บน object storage (S3/R2)
-  fileType    FileType   @default(EPUB)
-  pageCount   Int?
-  status      BookStatus @default(DRAFT)
-  publishedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                 String       @id @default(cuid()) // สำหรับใช้อ้างอิงภายในระบบ / Relational
+  bookCode           String       @unique              // รหัสหนังสือรูปแบบ ddc-YYYYMMDD-XXXXX (Auto-gen)
+  slug               String       @unique              // URL Slug สุ่มอัตโนมัติ (UUID/Random, ห้ามแก้ไข)
+  
+  title              String
+  author             String
+  description        String?                            // รายละเอียดหนังสือ (รองรับ Markdown ในอนาคต)
+  
+  coverUrl           String?
+  fileUrl            String       
+  fileType           FileType     @default(EPUB)
+  
+  publisher          String?      
+  publicationInfo    String?      
+  pageCount          String?      
+  publishingProvince String?      
+  ddc                DdcCategory  @default(GENERAL_000) 
 
-  categories BookCategory[]
-  progress   ReadingProgress[]
-  dailyStats BookStatsDaily[]
+  status             BookStatus   @default(DRAFT)
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  categories         BookCategory[]
+  progress           ReadingProgress[]
+  dailyStats         BookStatsDaily[]
 
   @@index([status, createdAt])
+  @@index([ddc])
+  @@index([bookCode])
+  @@index([slug])
+}
+
+// หมวดหมู่สากล DDC (Dewey Decimal Classification - 10 หมวดหมู่หลัก)
+enum DdcCategory {
+  GENERAL_000           // 000 - เบ็ดเตล็ด / ความรู้ทั่วไป
+  PHILOSOPHY_100        // 100 - ปรัชญาและจิตวิทยา
+  RELIGION_200          // 200 - ศาสนา
+  SOCIAL_SCIENCES_300   // 300 - สังคมศาสตร์
+  LANGUAGE_400          // 400 - ภาษาศาสตร์
+  SCIENCE_500           // 500 - วิทยาศาสตร์และคณิตศาสตร์
+  TECHNOLOGY_600        // 600 - เทคโนโลยี / วิทยาศาสตร์ประยุกต์
+  ARTS_RECREATION_700   // 700 - ศิลปะและการบันเทิง / กีฬา
+  LITERATURE_800        // 800 - วรรณกรรม / วรรณคดี
+  HISTORY_GEOGRAPHY_900 // 900 - ภูมิศาสตร์และประวัติศาสตร์
 }
 
 model Category {
@@ -61,29 +87,27 @@ model User {
 
 // ตำแหน่งที่อ่านล่าสุดของผู้ใช้ต่อเล่ม (1 แถวต่อคู่ → ไม่โตตามจำนวนครั้งที่อ่าน)
 model ReadingProgress {
-  userId    String
-  bookId    String
-  location  String // epub CFI หรือเลขหน้า
-  percent   Float    @default(0)
+  userId   String
+  bookId   String
+  location String // epub CFI หรือเลขหน้า
+  percent  Float    @default(0)
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@id([userId, bookId])
 }
 
 // ───────────── Events (โตเร็วมาก) ─────────────
-// append-only, ไม่มี FK ตั้งใจ (เพื่อ write เร็ว + partition ได้)
-// ต้อง partition ตามเดือน → ดู README หัวข้อ "Partition ReadingEvent"
 model ReadingEvent {
-  id         BigInt    @default(autoincrement())
-  occurredAt DateTime  @default(now())
+  id         BigInt     @default(autoincrement())
+  occurredAt DateTime   @default(now())
   bookId     String
   userId     String?
-  sessionId  String // uuid จาก client ต่อ 1 ครั้งที่เปิดอ่าน
+  sessionId  String     // uuid จาก client ต่อ 1 ครั้งที่เปิดอ่าน
   type       EventType
-  percent    Float     @default(0) // 0..1
-  deltaSec   Int       @default(0) // วินาทีที่อ่านเพิ่มตั้งแต่ event ก่อนหน้า
+  percent    Float      @default(0) // 0..1
+  deltaSec   Int        @default(0) // วินาทีที่อ่านเพิ่มตั้งแต่ event ก่อนหน้า
 
   @@id([id, occurredAt]) // partition key ต้องอยู่ใน PK
   @@index([bookId, occurredAt])

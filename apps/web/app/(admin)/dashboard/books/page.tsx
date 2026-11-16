@@ -15,6 +15,7 @@ import { Input } from "@repo/ui/components/input";
 import { Button } from "@repo/ui/components/button";
 import Link from "next/link";
 import { DashboardBooksPagination } from "@/components/dashboard-books-pagination";
+import { Book } from "@/types/book";
 
 export const dynamic = "force-dynamic";
 
@@ -329,7 +330,6 @@ export default async function DashboardBooksPage({
                     <td className="p-4 pr-6 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <EditBookModal book={book} categories={categories} />
-
                         <form action={deleteBookAction}>
                           <input type="hidden" name="id" value={book.id} />
                           <DeleteBookButton />
