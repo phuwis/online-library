@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 640" width="512" height="640" xmlns:c2pa="http://c2pa.org/manifest">
+  <defs>
+    <radialGradient id="gMane" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="#FFCB74"/><stop offset=".55" stop-color="#F4A340"/><stop offset="1" stop-color="#B8600E"/></radialGradient>
+    <radialGradient id="gSkin" cx=".38" cy=".3" r=".9"><stop offset="0" stop-color="#FFFEF8"/><stop offset=".55" stop-color="#FFEFD0"/><stop offset="1" stop-color="#E3BD84"/></radialGradient>
+    <radialGradient id="gMuzzle" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F0DDBD"/></radialGradient>
+    <radialGradient id="gNavy" cx=".3" cy=".2" r="1"><stop offset="0" stop-color="#5B84D1"/><stop offset=".45" stop-color="#25458A"/><stop offset="1" stop-color="#0E1D3F"/></radialGradient>
+    <linearGradient id="gArm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F78C8"/><stop offset="1" stop-color="#16295A"/></linearGradient>
+    <radialGradient id="gEye" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#6B4630"/><stop offset=".6" stop-color="#2B1B12"/><stop offset="1" stop-color="#0E0805"/></radialGradient>
+    <radialGradient id="gShoe" cx=".35" cy=".25" r=".9"><stop offset="0" stop-color="#A86B44"/><stop offset="1" stop-color="#4A2714"/></radialGradient>
+    <linearGradient id="gPants" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5A6577"/><stop offset="1" stop-color="#232B38"/></linearGradient>
+    <linearGradient id="gBook" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2DC4B2"/><stop offset="1" stop-color="#075049"/></linearGradient>
+    <linearGradient id="gPage" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E3DCCB"/></linearGradient>
+    <radialGradient id="gNose" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#9A6240"/><stop offset="1" stop-color="#3F200F"/></radialGradient>
+    <radialGradient id="gTie" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#FF6A7C"/><stop offset="1" stop-color="#9C1426"/></radialGradient>
+    <radialGradient id="gShadeHead" cx=".45" cy=".3" r=".75"><stop offset=".6" stop-color="#8A4F10" stop-opacity="0"/><stop offset="1" stop-color="#8A4F10" stop-opacity=".38"/></radialGradient>
+    <linearGradient id="gShadeBody" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient>
+    <filter id="blur6" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="blur3" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="blur12" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="12"/></filter>
+    <filter id="drop" x="-20%" y="-20%" width="150%" height="150%"><feDropShadow dx="5" dy="9" stdDeviation="7" flood-color="#0b1020" flood-opacity=".32"/></filter>
+    <clipPath id="cBody"><rect x="170" y="325" width="172" height="215" rx="55"/></clipPath>
+    <clipPath id="cHead"><ellipse cx="256" cy="225" rx="115" ry="105"/></clipPath>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="258" cy="598" rx="130" ry="18" fill="#0b1020" opacity=".35" filter="url(#blur12)"/>
+
+  <!-- tail -->
+  <g filter="url(#drop)">
+    <path d="M340 500 C420 500 450 450 430 410" fill="none" stroke="url(#gMane)" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="430" cy="404" r="22" fill="url(#gMane)"/>
+    <ellipse cx="423" cy="396" rx="9" ry="6" fill="#fff" opacity=".35" filter="url(#blur3)"/>
+  </g>
+
+  <!-- legs & shoes -->
+  <g filter="url(#drop)">
+    <rect x="200" y="520" width="42" height="62" rx="16" fill="url(#gPants)"/>
+    <rect x="270" y="520" width="42" height="62" rx="16" fill="url(#gPants)"/>
+    <ellipse cx="216" cy="592" rx="33" ry="17" fill="url(#gShoe)"/>
+    <ellipse cx="296" cy="592" rx="33" ry="17" fill="url(#gShoe)"/>
+    <ellipse cx="208" cy="587" rx="14" ry="5" fill="#fff" opacity=".35" filter="url(#blur3)"/>
+    <ellipse cx="288" cy="587" rx="14" ry="5" fill="#fff" opacity=".35" filter="url(#blur3)"/>
+  </g>
+
+  <!-- mane -->
+  <g filter="url(#drop)">
+    <g fill="url(#gMane)">
+      <circle cx="256" cy="215" r="130"/>
+      <circle cx="150" cy="170" r="45"/><circle cx="125" cy="235" r="45"/><circle cx="150" cy="300" r="42"/>
+      <circle cx="362" cy="170" r="45"/><circle cx="387" cy="235" r="45"/><circle cx="362" cy="300" r="42"/>
+      <circle cx="200" cy="110" r="42"/><circle cx="256" cy="95" r="42"/><circle cx="312" cy="110" r="42"/>
+    </g>
+    <g fill="#fff" opacity=".28" filter="url(#blur3)">
+      <ellipse cx="140" cy="155" rx="22" ry="10" transform="rotate(-35 140 155)"/>
+      <ellipse cx="205" cy="92" rx="20" ry="8" transform="rotate(-20 205 92)"/>
+      <ellipse cx="256" cy="78" rx="20" ry="8"/>
+      <ellipse cx="112" cy="222" rx="16" ry="8" transform="rotate(-60 112 222)"/>
+    </g>
+  </g>
+
+  <!-- ears -->
+  <g filter="url(#drop)">
+    <circle cx="165" cy="115" r="35" fill="url(#gSkin)"/><circle cx="165" cy="118" r="19" fill="#F2A08C"/>
+    <circle cx="347" cy="115" r="35" fill="url(#gSkin)"/><circle cx="347" cy="118" r="19" fill="#F2A08C"/>
+  </g>
+
+  <!-- tail-side waving arm (behind head) -->
+  <g filter="url(#drop)">
+    <path d="M330 362 L392 312" stroke="url(#gArm)" stroke-width="40" stroke-linecap="round"/>
+    <circle cx="404" cy="298" r="24" fill="url(#gSkin)"/>
+    <ellipse cx="397" cy="290" rx="9" ry="6" fill="#fff" opacity=".6" filter="url(#blur3)"/>
+    <path d="M338 350 L380 316" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".18" filter="url(#blur3)"/>
+  </g>
+
+  <!-- body -->
+  <g filter="url(#drop)">
+    <rect x="170" y="325" width="172" height="215" rx="55" fill="url(#gNavy)"/>
+  </g>
+  <g clip-path="url(#cBody)">
+    <rect x="170" y="325" width="172" height="215" fill="url(#gShadeBody)"/>
+    <polygon points="222,325 290,325 256,410" fill="#F6F2EA"/>
+    <polygon points="222,325 256,410 238,325" fill="#CFC7B6" opacity=".6"/>
+    <ellipse cx="205" cy="380" rx="16" ry="48" fill="#fff" opacity=".18" filter="url(#blur6)"/>
+  </g>
+  <!-- badge -->
+  <rect x="285" y="415" width="42" height="26" rx="4" fill="url(#gPage)" filter="url(#drop)"/>
+  <rect x="291" y="423" width="30" height="4" rx="2" fill="#9CA3AF"/>
+  <rect x="291" y="431" width="20" height="4" rx="2" fill="#9CA3AF"/>
+
+  <!-- neck shadow from head -->
+  <ellipse cx="256" cy="335" rx="95" ry="24" fill="#0a1530" opacity=".55" filter="url(#blur6)" clip-path="url(#cBody)"/>
+
+  <!-- bow tie -->
+  <g filter="url(#drop)">
+    <polygon points="256,344 220,326 220,360" fill="url(#gTie)"/>
+    <polygon points="256,344 292,326 292,360" fill="url(#gTie)"/>
+    <circle cx="256" cy="344" r="10" fill="url(#gTie)"/>
+    <ellipse cx="238" cy="338" rx="9" ry="3" fill="#fff" opacity=".4" filter="url(#blur3)"/>
+  </g>
+
+  <!-- book arm + book -->
+  <g filter="url(#drop)">
+    <path d="M182 362 L148 440" stroke="url(#gArm)" stroke-width="40" stroke-linecap="round"/>
+  </g>
+  <g transform="rotate(-8 150 480)" filter="url(#drop)">
+    <rect x="95" y="440" width="110" height="78" rx="7" fill="url(#gBook)"/>
+    <rect x="102" y="446" width="48" height="66" rx="3" fill="url(#gPage)"/>
+    <rect x="154" y="446" width="44" height="66" rx="3" fill="url(#gPage)"/>
+    <rect x="149" y="446" width="6" height="66" fill="#000" opacity=".15" filter="url(#blur3)"/>
+    <g stroke="#9CA3AF" stroke-width="3" stroke-linecap="round">
+      <line x1="110" y1="460" x2="142" y2="460"/><line x1="110" y1="472" x2="142" y2="472"/><line x1="110" y1="484" x2="136" y2="484"/>
+      <line x1="162" y1="460" x2="190" y2="460"/><line x1="162" y1="472" x2="190" y2="472"/><line x1="162" y1="484" x2="184" y2="484"/>
+    </g>
+    <rect x="97" y="442" width="50" height="5" rx="2.5" fill="#fff" opacity=".3"/>
+  </g>
+  <g filter="url(#drop)">
+    <circle cx="148" cy="448" r="21" fill="url(#gSkin)"/>
+    <ellipse cx="141" cy="440" rx="8" ry="5" fill="#fff" opacity=".6" filter="url(#blur3)"/>
+  </g>
+
+  <!-- head -->
+  <g filter="url(#drop)">
+    <ellipse cx="256" cy="225" rx="115" ry="105" fill="url(#gSkin)"/>
+  </g>
+  <g clip-path="url(#cHead)">
+    <ellipse cx="256" cy="225" rx="115" ry="105" fill="url(#gShadeHead)"/>
+    <ellipse cx="200" cy="140" rx="55" ry="20" transform="rotate(-25 200 140)" fill="#fff" opacity=".6" filter="url(#blur6)"/>
+  </g>
+  <!-- muzzle -->
+  <ellipse cx="256" cy="274" rx="58" ry="42" fill="url(#gMuzzle)"/>
+  <ellipse cx="256" cy="312" rx="40" ry="6" fill="#B5883F" opacity=".25" filter="url(#blur3)"/>
+  <!-- cheeks -->
+  <circle cx="170" cy="265" r="17" fill="#F2A08C" opacity=".6" filter="url(#blur3)"/>
+  <circle cx="342" cy="265" r="17" fill="#F2A08C" opacity=".6" filter="url(#blur3)"/>
+
+  <!-- eyes -->
+  <ellipse cx="206" cy="215" rx="17" ry="22" fill="url(#gEye)"/>
+  <ellipse cx="306" cy="215" rx="17" ry="22" fill="url(#gEye)"/>
+  <circle cx="212" cy="206" r="7" fill="#fff"/><circle cx="312" cy="206" r="7" fill="#fff"/>
+  <circle cx="200" cy="224" r="3.5" fill="#fff" opacity=".85"/><circle cx="300" cy="224" r="3.5" fill="#fff" opacity=".85"/>
+
+  <!-- glasses -->
+  <g fill="none" stroke="#2E2018" stroke-width="6.5">
+    <circle cx="206" cy="217" r="37"/><circle cx="306" cy="217" r="37"/>
+    <path d="M243 214 Q256 203 269 214" stroke-linecap="round"/>
+  </g>
+  <g fill="none" stroke="#7A5A44" stroke-width="2" opacity=".7">
+    <path d="M182 195 A34 34 0 0 1 200 183"/><path d="M282 195 A34 34 0 0 1 300 183"/>
+  </g>
+  <g fill="#fff" opacity=".28">
+    <path d="M178 205 Q184 178 212 182 Q192 188 188 214Z"/>
+    <path d="M278 205 Q284 178 312 182 Q292 188 288 214Z"/>
+  </g>
+
+  <!-- nose & mouth -->
+  <path d="M241 250 Q256 243 271 250 Q256 270 241 250Z" fill="url(#gNose)"/>
+  <ellipse cx="251" cy="250" rx="6" ry="2.5" fill="#fff" opacity=".5"/>
+  <g fill="none" stroke="#6B3E26" stroke-width="4.5" stroke-linecap="round">
+    <path d="M256 262 V275"/><path d="M256 275 Q238 293 222 277"/><path d="M256 275 Q274 293 290 277"/>
+  </g>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTpmZTQ2OTNkYS1lYzRiLTQ2NGUtOTM3ZS05Njc1OWZjYjY0MTEAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaOt2LJUSWUIMYMRLvOenmWEAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo5M2QyYTljNy1hODY0LTQ4NzgtOTUyMy00ZDE1Y2Y1MjIwNGFscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoO0RSzsLWtiv/WvcdPKR+RQAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggEHlRafkYtt1e8r2pQj9Y2FksakdM/+aRReeJE1VIkI6kZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaNHSaqaWdSyvroaGeAev5BUAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIB11f14ysk+c15mq6m6RK2ZKQVJVoA4dv2tQiBOe5xVdZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GSeEZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOmZlNDY5M2RhLWVjNGItNDY0ZS05MzdlLTk2NzU5ZmNiNjQxMS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjcxOTZmMjVkLWNiYTMtNDVkYi1hODg5LTllNzIwMTFkNjU4NHJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAQeVFp+Ri23V7yvalCP1jYWSxqR0z/5pFF54kTVUiQjqJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg8ClBdk+YI6w7jHMFgcdf0CwQTxbDvOz2EiKnZKdlAAyiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggNe+7llEVW3MtlujvDH5XoUlvFsy0nO0S58mydn+0cK10Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQDZpuuInHNxiLAg6ym77LQHN0GT+sxxqiN+1NnP/VKUIRnn4hLT+3eSChxD+qiuqbEeNnuDEb0fgsCps43FMZTE=</c2pa:manifest></metadata></svg>

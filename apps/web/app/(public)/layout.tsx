@@ -21,10 +21,9 @@ export default function PublicLayout({
         />
       </div>
 
-      {/* Global Public Header Bar (ปรับ padding และความยืดหยุ่นบนมือถือ) */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-background/80 backdrop-blur-md">
+      {/* Global Public Header Bar */}
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-8 h-16 flex items-center justify-between gap-2">
-          {/* Logo & Agency Title (ป้องกันข้อความดันล้นจอด้วย min-w-0 และ truncate) */}
           <Link
             href="/"
             className="flex items-center gap-2.5 group shrink min-w-0"
@@ -46,9 +45,7 @@ export default function PublicLayout({
             </div>
           </Link>
 
-          {/* Navigation & Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Nav Menu Items */}
             <nav className="flex items-center gap-1">
               <Button
                 asChild
@@ -59,22 +56,17 @@ export default function PublicLayout({
                 <Link href="/books">หนังสือทั้งหมด</Link>
               </Button>
             </nav>
-
             <div className="h-4 w-[1px] bg-border mx-0.5 hidden sm:block" />
-
-            {/* Theme Toggle */}
             <ThemeToggle />
           </div>
         </div>
       </header>
 
-      {/* Main Content Area (ปรับ Padding ด้านข้างให้พอดีบนจอมือถือ) */}
-      <main className="flex-1 relative z-10 w-full max-w-6xl mx-auto px-3 sm:px-6 md:px-8 py-6 sm:py-8">
-        {children}
-      </main>
+      {/* 🌟 ปลดล็อก Main ให้เป็น w-full โดยย้าย Container ไปไว้ที่หน้าเฉพาะแทน */}
+      <main className="flex-1 relative z-10 w-full">{children}</main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 py-6 px-4 text-center text-xs text-muted-foreground relative z-10 bg-background/50 backdrop-blur-sm">
+      {/* Footer (snap-end: ให้ scroll-snap ของหน้า home เลื่อนลงมาถึง footer ได้) */}
+      <footer className="snap-end border-t border-slate-200/80 dark:border-slate-800/80 py-6 px-4 text-center text-xs text-muted-foreground relative z-10 bg-background/50 backdrop-blur-sm">
         © {new Date().getFullYear()} สถาบันดำรงราชานุภาพ
         สำนักงานปลัดกระทรวงมหาดไทย. All rights reserved.
       </footer>
