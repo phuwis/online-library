@@ -16,6 +16,10 @@ import {
 import { Button } from "@repo/ui/components/button";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import {
+  saveTotalPages,
+  touchLastRead,
+} from "@/features/library/local-library";
 
 const Document = dynamic(
   () => import("react-pdf").then((mod) => mod.Document),
@@ -160,6 +164,9 @@ export default function BookReaderPage({
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
+    // ใช้คำนวณ % ความคืบหน้าในส่วน "หนังสือที่อ่านค้างไว้" หน้าแรก
+    saveTotalPages(slug, numPages);
+    touchLastRead(slug);
   }
 
   useEffect(() => {
@@ -188,6 +195,7 @@ export default function BookReaderPage({
     const newPage = e.data + 1;
     setPageNumber(newPage);
     localStorage.setItem(`book_page_${slug}`, newPage.toString());
+    touchLastRead(slug);
   };
 
   // ฟังก์ชันเปิด/ปิด บุ๊กมาร์กทั้งเล่มจากเมนู 3 จุด

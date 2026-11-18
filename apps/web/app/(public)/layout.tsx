@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Button } from "@repo/ui/components/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BookshelfStrip } from "@/components/bookshelf-strip";
+import { PublicNav } from "@/components/public-nav";
+import { SiteFooter } from "@/components/site-footer";
 
 export default function PublicLayout({
   children,
@@ -22,8 +24,10 @@ export default function PublicLayout({
       </div>
 
       {/* Global Public Header Bar */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-background/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-8 h-16 flex items-center justify-between gap-2">
+      <header className="sticky top-0 z-50 w-full overflow-hidden border-b border-slate-200/80 dark:border-slate-800/80 bg-background/80 backdrop-blur-md">
+        {/* ชั้นหนังสือเต็มความกว้าง header (จางมาก) */}
+        <BookshelfStrip className="pointer-events-none absolute inset-0 size-full opacity-[0.1] dark:opacity-[0.16]" />
+        <div className="relative max-w-6xl mx-auto px-3 sm:px-6 md:px-8 h-16 flex items-center justify-between gap-2">
           <Link
             href="/"
             className="flex items-center gap-2.5 group shrink min-w-0"
@@ -46,16 +50,7 @@ export default function PublicLayout({
           </Link>
 
           <div className="flex items-center gap-2 shrink-0">
-            <nav className="flex items-center gap-1">
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="text-xs font-medium px-2.5 sm:px-3"
-              >
-                <Link href="/books">หนังสือทั้งหมด</Link>
-              </Button>
-            </nav>
+            <PublicNav />
             <div className="h-4 w-[1px] bg-border mx-0.5 hidden sm:block" />
             <ThemeToggle />
           </div>
@@ -63,13 +58,12 @@ export default function PublicLayout({
       </header>
 
       {/* 🌟 ปลดล็อก Main ให้เป็น w-full โดยย้าย Container ไปไว้ที่หน้าเฉพาะแทน */}
-      <main className="flex-1 relative z-10 w-full">{children}</main>
+      {/* id ใช้กับเอฟเฟกต์เบลอ/จางตอนเลื่อนถึง footer (FooterFocusEffect) */}
+      <main id="site-main" className="flex-1 relative z-10 w-full">
+        {children}
+      </main>
 
-      {/* Footer (snap-end: ให้ scroll-snap ของหน้า home เลื่อนลงมาถึง footer ได้) */}
-      <footer className="snap-end border-t border-slate-200/80 dark:border-slate-800/80 py-6 px-4 text-center text-xs text-muted-foreground relative z-10 bg-background/50 backdrop-blur-sm">
-        © {new Date().getFullYear()} สถาบันดำรงราชานุภาพ
-        สำนักงานปลัดกระทรวงมหาดไทย. All rights reserved.
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

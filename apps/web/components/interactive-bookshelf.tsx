@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Sparkles, Eye, ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, Eye, Library } from "lucide-react";
+import {
+  BookTitle,
+  SectionHeading,
+  SHELF_BOOK_W,
+  ShelfArrow,
+  ShelfCabinet,
+  ShelfCoverFallback,
+  ShelfPlank,
+} from "@/components/shelf-cabinet";
 
 interface BookItem {
   id: string;
@@ -11,132 +20,225 @@ interface BookItem {
   slug: string;
   author?: string | null;
   coverUrl?: string | null;
+  fileType?: string | null;
+}
+
+const SHELF_CONTENT = {
+  title: "ชั้นหนังสืออัจฉริยะ",
+  subtitle:
+    "จำลองชั้นวางหนังสือห้องสมุดกระทรวงมหาดไทย เลือกเล่มที่สนใจเพื่อเปิดอ่านหรือดูรายละเอียด",
+  cabinetTitle: "ชั้นหนังสือดิจิทัล • ห้องสมุดกระทรวงมหาดไทย",
+  footerLeft: "ชั้นวางหนังสือดิจิทัล สดร.",
+  seeAll: "ดูหนังสือทั้งหมดในคลัง",
+  fallbackAuthor: "สถาบันดำรงราชานุภาพ",
+  empty: {
+    title: "ชั้นหนังสือยังว่างอยู่",
+    description: "หนังสือที่เผยแพร่แล้วจะแสดงบนชั้นนี้โดยอัตโนมัติ",
+  },
+};
+
+/** หนังสือต่อ 1 ชั้น และจำนวนชั้นที่แสดงพร้อมกัน */
+const BOOKS_PER_SHELF = 4;
+const SHELVES_PER_PAGE = 2;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+/** "ชั้น 1–2" / "ชั้น 5" */
+function shelfRangeLabel(page: number, totalShelves: number) {
+  const first = page * SHELVES_PER_PAGE + 1;
+  const last = Math.min(first + SHELVES_PER_PAGE - 1, totalShelves);
+  return first === last ? `ชั้น ${first}` : `ชั้น ${first}–${last}`;
 }
 
 export function InteractiveBookshelf({ books }: { books: BookItem[] }) {
-  const [activeShelf, setActiveShelf] = useState<number>(0);
+  const [activePage, setActivePage] = useState(0);
 
-  // แบ่งหนังสือออกเป็นแถวๆ ละ 4 เล่ม (เปรียบเสมือนชั้นไม้แต่ละชั้นในห้องสมุด)
-  const shelves = [];
-  for (let i = 0; i < books.length; i += 4) {
-    shelves.push(books.slice(i, i + 4));
-  }
-
-  if (books.length === 0) return null;
+  const shelves = chunk(books, BOOKS_PER_SHELF);
+  const pages = chunk(shelves, SHELVES_PER_PAGE);
+  // เติมชั้นว่างให้ครบ 2 ชั้นเสมอ (โครงตู้คงที่ ไม่กระโดด)
+  const visible: BookItem[][] = Array.from(
+    { length: SHELVES_PER_PAGE },
+    (_, i) => pages[activePage]?.[i] ?? [],
+  );
+  const hasMany = pages.length > 1;
 
   return (
-    <div className="space-y-8">
-      {/* ส่วนหัวชื่อหมวดชั้นหนังสือ พร้อมเอฟเฟกต์ปฏิสัมพันธ์เล็กน้อย */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <BookOpen className="size-6 text-primary" />
-            <span>ชั้นหนังสืออัจฉริยะ (Interactive Bookshelf)</span>
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            จำลองชั้นวางหนังสือห้องสมุดกระทรวงมหาดไทย
-            เลือกเล่มที่สนใจเพื่อเปิดอ่านหรือดูรายละเอียด
-          </p>
-        </div>
+    <section className="space-y-5 sm:space-y-6">
+      <SectionHeading
+        tone="indigo"
+        icon={<Library className="size-5" />}
+        title={SHELF_CONTENT.title}
+        subtitle={SHELF_CONTENT.subtitle}
+        actions={
+          hasMany ? (
+            <ShelfSwitcher
+              labels={pages.map((_, i) => shelfRangeLabel(i, shelves.length))}
+              active={activePage}
+              onChange={setActivePage}
+            />
+          ) : undefined
+        }
+      />
 
-        {/* ปุ่มสลับชั้น (ถ้ามีหลายชั้น) */}
-        {shelves.length > 1 && (
-          <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
-            {shelves.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveShelf(idx)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  activeShelf === idx
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                ชั้นที่ {idx + 1}
-              </button>
-            ))}
+      <ShelfCabinet
+        tone="indigo"
+        label="LIBRARY SHELF"
+        title={SHELF_CONTENT.cabinetTitle}
+        badge={
+          shelves.length > 0
+            ? `${shelfRangeLabel(activePage, shelves.length)} จาก ${shelves.length}`
+            : "0 เล่ม"
+        }
+        footerLeft={SHELF_CONTENT.footerLeft}
+        footerRight={
+          <Link
+            href="/books"
+            className="inline-flex items-center gap-1 font-semibold text-indigo-100 hover:text-white hover:underline"
+          >
+            {SHELF_CONTENT.seeAll}
+            <ArrowRight className="size-3.5" />
+          </Link>
+        }
+      >
+        {books.length === 0 ? (
+          <div className="py-10 text-center space-y-2">
+            <BookOpen className="size-10 mx-auto text-indigo-200/50" />
+            <h3 className="text-base font-bold text-white">
+              {SHELF_CONTENT.empty.title}
+            </h3>
+            <p className="text-sm text-indigo-200/75">
+              {SHELF_CONTENT.empty.description}
+            </p>
           </div>
-        )}
-      </div>
+        ) : (
+          <>
+            {hasMany && (
+              <>
+                <ShelfArrow
+                  direction="left"
+                  label="ชั้นก่อนหน้า"
+                  disabled={activePage === 0}
+                  onClick={() => setActivePage((i) => Math.max(0, i - 1))}
+                />
+                <ShelfArrow
+                  direction="right"
+                  label="ชั้นถัดไป"
+                  disabled={activePage === pages.length - 1}
+                  onClick={() =>
+                    setActivePage((i) => Math.min(pages.length - 1, i + 1))
+                  }
+                />
+              </>
+            )}
 
-      {/* โครงสร้างชั้นวางหนังสือ (Bookshelf Container) */}
-      <div className="relative bg-gradient-to-b from-purple-950/20 via-background to-muted/30 border border-border/80 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl overflow-hidden backdrop-blur-sm">
-        {/* แสงเอฟเฟกต์ฉากหลัง */}
-        <div className="absolute top-0 right-1/4 w-96 h-32 bg-primary/10 blur-3xl pointer-events-none" />
-
-        {/* แสดงผลหนังสือบนชั้นที่เลือก */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 relative z-10">
-          {shelves[activeShelf]?.map((book) => (
-            <div
-              key={book.id}
-              className="group relative flex flex-col items-center"
-            >
-              {/* เล่มหนังสือที่มีเอฟเฟกต์ 3D Hover & Reflection */}
-              <Link
-                href={`/books/${book.slug}`}
-                className="relative aspect-[3/4] w-full max-w-[200px] sm:max-w-none rounded-2xl overflow-hidden bg-card border-2 border-border/80 shadow-lg group-hover:border-primary group-hover:shadow-2xl group-hover:-translate-y-3 transition-all duration-500 flex flex-col"
-              >
-                {book.coverUrl ? (
-                  <Image
-                    src={book.coverUrl}
-                    alt={book.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                ) : (
-                  <div className="size-full flex flex-col items-center justify-center bg-muted p-4 text-center">
-                    <BookOpen className="size-8 text-muted-foreground mb-2 opacity-50" />
-                    <span className="text-xs text-muted-foreground font-medium">
-                      ไม่มีรูปหน้าปก
-                    </span>
+            <div className="max-w-[40rem] mx-auto space-y-3">
+              {visible.map((row, i) => (
+                <div key={i}>
+                  {/* มือถือ: เลื่อนแนวนอนในชั้น / จอกว้าง: 4 เล่มเต็มชั้น */}
+                  <div className="overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="w-max mx-auto flex items-start gap-4 sm:gap-5 px-1 min-h-[13.25rem] sm:min-h-[14rem]">
+                      {row.map((book) => (
+                        <ShelfBook key={book.id} book={book} />
+                      ))}
+                    </div>
                   </div>
-                )}
-
-                {/* Overlay เมื่อ Hover เพื่อกดอ่านด่วน */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 text-white">
-                  <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 space-y-2">
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-primary text-primary-foreground font-semibold px-2 py-0.5 rounded-full w-max">
-                      <Sparkles className="size-3" /> เปิดอ่านทันที
-                    </span>
-                    <p className="text-xs font-bold line-clamp-2 leading-snug">
-                      {book.title}
-                    </p>
-                  </div>
+                  <ShelfPlank tone="indigo" />
                 </div>
-              </Link>
-
-              {/* ข้อมูลใต้เล่มหนังสือ */}
-              <div className="w-full text-center mt-3 space-y-0.5 px-1">
-                <Link
-                  href={`/books/${book.slug}`}
-                  className="font-semibold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 block"
-                >
-                  {book.title}
-                </Link>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {book.author || "สถาบันดำรงราชานุภาพ"}
-                </p>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
+      </ShelfCabinet>
+    </section>
+  );
+}
 
-        {/* 🪵 ไม้กระดานรองชั้นหนังสือ (Bookshelf Base 3D Effect) */}
-        <div className="mt-8 pt-4 border-t-4 border-purple-950/40 dark:border-purple-900/60 relative">
-          <div className="absolute inset-x-0 -top-1.5 h-1 bg-gradient-to-r from-transparent via-purple-500/30 to-transparent pointer-events-none" />
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-2">
-            <span className="flex items-center gap-1">
-              <Sparkles className="size-3.5 text-primary" />{" "}
-              ชั้นวางหนังสือดิจิทัล สดร.
+function ShelfSwitcher({
+  labels,
+  active,
+  onChange,
+}: {
+  labels: string[];
+  active: number;
+  onChange: (i: number) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="เลือกชั้นหนังสือ"
+      className="flex flex-wrap items-center gap-1 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-1"
+    >
+      {labels.map((label, i) => (
+        <button
+          key={label}
+          type="button"
+          role="tab"
+          aria-selected={active === i}
+          onClick={() => onChange(i)}
+          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+            active === i
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-indigo-500/10"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ShelfBook({ book }: { book: BookItem }) {
+  return (
+    <div
+      className={`group flex flex-col items-center shrink-0 snap-start ${SHELF_BOOK_W}`}
+    >
+      <Link
+        href={`/books/${book.slug}`}
+        className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-indigo-950/50 border-2 border-indigo-300/20 shadow-xl group-hover:border-cyan-200/80 group-hover:-translate-y-2 transition-all duration-500"
+      >
+        {book.coverUrl ? (
+          <Image
+            src={book.coverUrl}
+            alt={book.title}
+            fill
+            sizes="128px"
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+        ) : (
+          <ShelfCoverFallback title={book.title} />
+        )}
+
+        {book.fileType && (
+          <span className="absolute top-2 right-2 rounded-full border border-white/20 bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+            {book.fileType}
+          </span>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/90 via-black/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+          <span className="flex items-center gap-2 text-xs font-semibold text-cyan-100 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+            <span className="p-1.5 rounded-full bg-indigo-500 text-white shadow">
+              <Eye className="size-3" />
             </span>
-            <Link
-              href="/books"
-              className="font-medium text-primary hover:underline flex items-center gap-1"
-            >
-              ดูหนังสือทั้งหมดในคลัง <ArrowRight className="size-3.5" />
-            </Link>
-          </div>
+            ดูรายละเอียด
+          </span>
         </div>
+      </Link>
+
+      <div className="w-full text-center mt-2 space-y-0.5 px-0.5">
+        <Link href={`/books/${book.slug}`}>
+          <BookTitle
+            title={book.title}
+            className="text-indigo-50 group-hover:text-cyan-200 transition-colors"
+          />
+        </Link>
+        <p className="text-[11px] text-indigo-200/65 truncate">
+          {book.author || SHELF_CONTENT.fallbackAuthor}
+        </p>
       </div>
     </div>
   );

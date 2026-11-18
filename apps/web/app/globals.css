@@ -6,6 +6,13 @@
 @source "../../../packages/ui/src";
 
 /* ปรับแต่งเฉพาะแอป web เพิ่มต่อจากนี้ */
+
+/*
+ * stack: จอที่ "กว้างและสูงพอ" สำหรับเอฟเฟกต์ section ซ้อนทับ + scroll-snap ในหน้าแรก
+ * (จอโน้ตบุ๊กเตี้ยๆ จะได้ layout ไหลปกติ เนื้อหาไม่ถูกตัด)
+ * ถ้าแก้ค่าตรงนี้ ให้แก้ STACK_MEDIA ใน app/(public)/page.tsx ให้ตรงกันด้วย
+ */
+@custom-variant stack (@media (min-width: 64rem) and (min-height: 47.5rem));
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

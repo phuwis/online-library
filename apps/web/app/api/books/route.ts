@@ -3,6 +3,27 @@ import { prisma } from "@repo/db";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import {
+  listPublishedBooksBySlugs,
+  MAX_SLUG_LOOKUP,
+} from "@/features/books/queries";
+
+/**
+ * GET /api/books?slugs=a,b,c
+ * หน้าบ้านใช้ดึงข้อมูลหนังสือจาก slug ที่เก็บไว้ใน localStorage (บุ๊กมาร์ก / อ่านค้าง)
+ * คืนเฉพาะเล่มที่ PUBLISHED ตามลำดับ slug ที่ส่งมา
+ */
+export async function GET(req: Request) {
+  const raw = new URL(req.url).searchParams.get("slugs") ?? "";
+  const slugs = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => /^[a-z0-9-]{1,100}$/i.test(s))
+    .slice(0, MAX_SLUG_LOOKUP);
+
+  const books = await listPublishedBooksBySlugs(slugs);
+  return NextResponse.json({ books });
+}
 
 // ฟังก์ชันช่วยแปลง DDC Enum เป็นรหัสตัวเลข 3 หลัก (เช่น GENERAL_000 -> 000)
 function getDdcCodePrefix(ddc: string): string {
