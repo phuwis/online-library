@@ -1,498 +1,717 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
-  LayoutGrid,
-  Table as TableIcon,
-  ChevronLeft,
-  ChevronRight,
-  Check,
+  ArrowDownUp,
   Bookmark,
+  LayoutGrid,
+  Loader2,
+  Search,
+  SlidersHorizontal,
+  Table as TableIcon,
+  X,
 } from "lucide-react";
-import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
-import Image from "next/image";
+import {
+  useBookmarks,
+  useBooksBySlugs,
+} from "@/features/library/local-library";
+import {
+  countAdvancedFilters,
+  ddcInfo,
+  LIMIT_OPTIONS,
+  SORT_OPTIONS,
+  toSearchParams,
+  type BookFacets,
+  type BookFilters,
+  type SortValue,
+} from "@/features/books/filters";
+import {
+  BookGridCard,
+  BookTable,
+  BooksEmptyState,
+  GridSkeleton,
+  Pagination,
+  type BookItem,
+} from "@/components/books/book-list-ui";
+import { FilterPanel, FilterSheet } from "@/components/books/book-filters";
 
-interface Book {
-  id: string;
-  title: string;
-  slug: string;
-  author: string;
-  coverUrl: string | null;
-  fileType?: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
+type Category = { id: string; name: string; slug: string };
 
 interface Props {
-  initialQ: string;
-  initialCategory: string;
+  filters: BookFilters;
+  facets: BookFacets;
   categories: Category[];
-  items: Book[];
+  items: BookItem[];
   total: number;
   totalPages: number;
-  currentPage: number;
-  limit: number;
 }
 
+type ViewMode = "grid" | "table";
+const VIEW_KEY = "books_view_mode";
+
 export function BooksClientContent({
-  initialQ,
-  initialCategory,
+  filters,
+  facets,
   categories,
   items,
   total,
   totalPages,
-  currentPage,
-  limit,
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const [searchTerm, setSearchTerm] = useState(initialQ);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [showLimitDropdown, setShowLimitDropdown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = useState(filters.q);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  // State บุ๊กมาร์กจาก localStorage
-  const [bookmarkedSlugs, setBookmarkedSlugs] = useState<string[]>([]);
-  const [isBookmarksTab, setIsBookmarksTab] = useState(
-    initialCategory === "bookmarks",
-  );
+  const isBookmarksTab = filters.category === "bookmarks";
+  const activeCategory = categories.find((c) => c.slug === filters.category);
+  const advancedCount = countAdvancedFilters(filters);
 
-  // เช็คขนาดหน้าจอ: ถ้าเป็นโทรศัพท์มือถือ (< 640px) ให้บังคับใช้ Grid view เสมอ
+  // บุ๊กมาร์ก: hook กลาง (ซิงก์กับหน้าแรก/หน้ารายละเอียดอัตโนมัติ)
+  const { slugs: bookmarkSlugs, isBookmarked, toggle } = useBookmarks();
+  const bookmarkFetch = useBooksBySlugs(isBookmarksTab ? bookmarkSlugs : []);
+
+  // ───────── จำมุมมองกริด/ตาราง ─────────
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setViewMode("grid");
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("bookmarked_slugs");
-    if (saved) {
-      try {
-        setBookmarkedSlugs(JSON.parse(saved));
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "grid" || saved === "table") setViewMode(saved);
+    } catch {
+      /* ignore */
     }
   }, []);
-
-  useEffect(() => {
-    const categoryParam = searchParams.get("category");
-    if (categoryParam === "bookmarks" || initialCategory === "bookmarks") {
-      setIsBookmarksTab(true);
-    } else {
-      setIsBookmarksTab(false);
+  const changeView = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_KEY, mode);
+    } catch {
+      /* ignore */
     }
-  }, [initialCategory, searchParams]);
-
-  const toggleBookmark = (e: React.MouseEvent, slug: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    let updated: string[];
-    if (bookmarkedSlugs.includes(slug)) {
-      updated = bookmarkedSlugs.filter((s) => s !== slug);
-    } else {
-      updated = [...bookmarkedSlugs, slug];
-    }
-
-    setBookmarkedSlugs(updated);
-    localStorage.setItem("bookmarked_slugs", JSON.stringify(updated));
   };
 
-  // Debounce Search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm !== initialQ) {
-        const params = new URLSearchParams(searchParams.toString());
-        if (searchTerm) {
-          params.set("q", searchTerm);
-        } else {
-          params.delete("q");
-        }
-        params.set("page", "1");
-
-        startTransition(() => {
-          router.push(`/books?${params.toString()}`);
+  // ───────── เปลี่ยนตัวกรอง → เปลี่ยน URL (หน้า server ดึงข้อมูลใหม่) ─────────
+  const apply = useCallback(
+    (
+      patch: Partial<BookFilters>,
+      { replace = false, scrollToResults = false } = {},
+    ) => {
+      // เปลี่ยนตัวกรองใดๆ = กลับไปหน้า 1 (ยกเว้นสั่งเปลี่ยนหน้าเอง)
+      const next: BookFilters = { ...filters, page: 1, ...patch };
+      const qs = toSearchParams(next).toString();
+      const url = qs ? `/books?${qs}` : "/books";
+      startTransition(() => {
+        if (replace) router.replace(url, { scroll: false });
+        else router.push(url, { scroll: false });
+      });
+      if (scrollToResults) {
+        resultsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
       }
-    }, 300);
+    },
+    [filters, router],
+  );
 
+  // ค้นหาแบบหน่วงเวลา 300ms — ใช้ replace ไม่ให้ประวัติย้อนกลับรก
+  useEffect(() => {
+    const term = searchTerm.trim();
+    if (term === filters.q) return;
+    const timer = setTimeout(() => apply({ q: term }, { replace: true }), 300);
     return () => clearTimeout(timer);
-  }, [searchTerm, initialQ, router, searchParams]);
+  }, [searchTerm, filters.q, apply]);
 
-  const handleCategoryClick = (catSlug?: string) => {
-    if (catSlug === "bookmarks") {
-      setIsBookmarksTab(true);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("category", "bookmarks");
-      router.push(`/books?${params.toString()}`);
-      return;
-    }
+  // q ใน URL เปลี่ยนจากภายนอก (ย้อนกลับ / ล้างตัวกรอง) → อัปเดตช่องค้นหา ถ้าไม่ได้พิมพ์อยู่
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setSearchTerm(filters.q);
+  }, [filters.q]);
 
-    setIsBookmarksTab(false);
-    const params = new URLSearchParams(searchParams.toString());
-    if (catSlug) {
-      params.set("category", catSlug);
-    } else {
-      params.delete("category");
-    }
-    params.set("page", "1");
+  // กด "/" เพื่อไปที่ช่องค้นหา
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      const typing =
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.isContentEditable;
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-    startTransition(() => {
-      router.push(`/books?${params.toString()}`);
+  const clearAdvanced = () =>
+    apply({ ddc: [], type: "", publisher: [], province: [], year: [] });
+  const clearAll = () => {
+    setSearchTerm("");
+    apply({
+      q: "",
+      category: "",
+      ddc: [],
+      type: "",
+      publisher: [],
+      province: [],
+      year: [],
     });
   };
 
-  const handlePageChange = (newPage: number) => {
-    if (
-      newPage < 1 ||
-      newPage > (isBookmarksTab ? displayTotalPages : totalPages)
-    )
-      return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", newPage.toString());
+  // ───────── ข้อมูลที่แสดง ─────────
+  const query = filters.q;
+  const limit = filters.limit;
 
-    startTransition(() => {
-      router.push(`/books?${params.toString()}`);
-    });
-  };
+  const bookmarkMatches = useMemo(() => {
+    if (!isBookmarksTab) return [];
+    const q = query.toLowerCase();
+    const current = new Set(bookmarkSlugs ?? []);
+    return (bookmarkFetch.books ?? []).filter(
+      (b) =>
+        current.has(b.slug) &&
+        (!q ||
+          b.title.toLowerCase().includes(q) ||
+          b.author.toLowerCase().includes(q)),
+    );
+  }, [isBookmarksTab, bookmarkFetch.books, bookmarkSlugs, query]);
 
-  const handleLimitChange = (newLimit: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("limit", newLimit.toString());
-    params.set("page", "1");
-    setShowLimitDropdown(false);
-
-    startTransition(() => {
-      router.push(`/books?${params.toString()}`);
-    });
-  };
-
-  const filteredBookmarks = isBookmarksTab
-    ? items.filter((book) => bookmarkedSlugs.includes(book.slug))
-    : [];
-
-  const displayTotal = isBookmarksTab ? filteredBookmarks.length : total;
+  const displayTotal = isBookmarksTab ? bookmarkMatches.length : total;
   const displayTotalPages = isBookmarksTab
-    ? Math.ceil(filteredBookmarks.length / limit) || 1
+    ? Math.max(1, Math.ceil(bookmarkMatches.length / limit))
     : totalPages;
-
+  const page = Math.min(filters.page, displayTotalPages);
   const displayedItems = isBookmarksTab
-    ? filteredBookmarks.slice((currentPage - 1) * limit, currentPage * limit)
+    ? bookmarkMatches.slice((page - 1) * limit, page * limit)
     : items;
+  const startItem = displayTotal === 0 ? 0 : (page - 1) * limit + 1;
+  const endItem = Math.min(page * limit, displayTotal);
 
-  const startItem = displayTotal === 0 ? 0 : (currentPage - 1) * limit + 1;
-  const endItem = Math.min(currentPage * limit, displayTotal);
+  const bookmarksLoading =
+    isBookmarksTab && (bookmarkSlugs === null || bookmarkFetch.books === null);
+  const isSearching = isPending && searchTerm.trim() !== filters.q;
+  const categoryCount = (slug: string) =>
+    facets.category.find((c) => c.value === slug)?.count ?? 0;
+
+  // ชิปตัวกรองที่ใช้อยู่ (กด ✕ เพื่อเอาออกทีละตัว)
+  const activeChips: { key: string; label: string; remove: () => void }[] = [
+    ...(query
+      ? [
+          {
+            key: "q",
+            label: `คำค้น: “${query}”`,
+            remove: () => setSearchTerm(""),
+          },
+        ]
+      : []),
+    ...(isBookmarksTab || activeCategory
+      ? [
+          {
+            key: "cat",
+            label: `หมวด: ${isBookmarksTab ? "บุ๊กมาร์กของฉัน" : activeCategory!.name}`,
+            remove: () => apply({ category: "" }),
+          },
+        ]
+      : []),
+    ...filters.ddc.map((d) => ({
+      key: `ddc-${d}`,
+      label: `DDC ${ddcInfo(d)?.code} ${ddcInfo(d)?.label}`,
+      remove: () => apply({ ddc: filters.ddc.filter((x) => x !== d) }),
+    })),
+    ...(filters.type
+      ? [
+          {
+            key: "type",
+            label: `ไฟล์: ${filters.type}`,
+            remove: () => apply({ type: "" }),
+          },
+        ]
+      : []),
+    ...filters.publisher.map((p) => ({
+      key: `pub-${p}`,
+      label: `สำนักพิมพ์: ${p}`,
+      remove: () =>
+        apply({ publisher: filters.publisher.filter((x) => x !== p) }),
+    })),
+    ...filters.province.map((p) => ({
+      key: `prov-${p}`,
+      label: `จังหวัด: ${p}`,
+      remove: () =>
+        apply({ province: filters.province.filter((x) => x !== p) }),
+    })),
+    ...filters.year.map((y) => ({
+      key: `year-${y}`,
+      label: `ปี ${y}`,
+      remove: () => apply({ year: filters.year.filter((x) => x !== y) }),
+    })),
+  ];
+
+  const panel = (
+    <FilterPanel
+      filters={filters}
+      facets={facets}
+      onChange={(patch) => apply(patch)}
+      disabledReason={
+        isBookmarksTab
+          ? "ตัวกรองนี้ใช้กับคลังหนังสือทั้งหมด ในแท็บบุ๊กมาร์กค้นหาจากช่องค้นหาได้"
+          : undefined
+      }
+    />
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Search Input & View Toggle */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
-        <div className="relative flex-1 w-full">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ค้นหาชื่อหนังสือ หรือ ผู้เขียน..."
-            className="pl-9 bg-background/50 w-full text-sm"
-          />
-        </div>
-
-        {/* 🌟 ซ่อนมุมมองตาราง (Table View) เมื่ออยู่บนมือถือ (< sm) */}
-        <div className="hidden sm:flex items-center border border-border rounded-xl p-1 bg-background/50 shrink-0">
-          <Button
-            variant={viewMode === "grid" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className="rounded-lg h-8 px-3 gap-1.5"
-          >
-            <LayoutGrid className="size-4" />
-            <span className="text-xs">กริด</span>
-          </Button>
-          <Button
-            variant={viewMode === "table" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("table")}
-            className="rounded-lg h-8 px-3 gap-1.5"
-          >
-            <TableIcon className="size-4" />
-            <span className="text-xs">ตาราง</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* หมวดหมู่ รวมปุ่ม บุ๊กมาร์ก */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 border-t border-border/60">
-        <button type="button" onClick={() => handleCategoryClick(undefined)}>
-          <Badge
-            variant={
-              !initialCategory && !isBookmarksTab ? "default" : "outline"
-            }
-            className="px-3 py-1.5 text-xs font-medium cursor-pointer"
-          >
-            ทั้งหมด
-          </Badge>
-        </button>
-
-        <button type="button" onClick={() => handleCategoryClick("bookmarks")}>
-          <Badge
-            variant={isBookmarksTab ? "default" : "outline"}
-            className={`px-3 py-1.5 text-xs font-medium cursor-pointer flex items-center gap-1.5 ${
-              isBookmarksTab
-                ? "bg-yellow-500 text-black hover:bg-yellow-600"
-                : "bg-yellow-500/10 text-yellow-600 border-yellow-500/30 hover:bg-yellow-500/20"
-            }`}
-          >
-            <Bookmark
-              className={`size-3.5 ${isBookmarksTab ? "fill-black text-black" : "fill-yellow-500 text-yellow-500"}`}
+    <div className="space-y-5">
+      {/* ───────── แถบค้นหา + หมวดหมู่ (ติดด้านบนเมื่อเลื่อน) ───────── */}
+      <div className="sticky top-16 z-30 -mx-3 border-b border-border/60 bg-background/85 px-3 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border sm:px-4 sm:shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearchTerm("");
+              }}
+              placeholder="ค้นหาชื่อหนังสือ ผู้แต่ง สำนักพิมพ์ หรือรหัสหนังสือ…"
+              aria-label="ค้นหาหนังสือ"
+              className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-20 text-sm shadow-inner outline-none transition-shadow placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-4 focus:ring-primary/15 [&::-webkit-search-cancel-button]:hidden"
             />
-            <span>บุ๊กมาร์ก ({bookmarkedSlugs.length})</span>
-          </Badge>
-        </button>
-
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => handleCategoryClick(c.slug)}
-          >
-            <Badge
-              variant={
-                !isBookmarksTab && initialCategory === c.slug
-                  ? "default"
-                  : "outline"
-              }
-              className="px-3 py-1.5 text-xs font-medium cursor-pointer"
-            >
-              {c.name}
-            </Badge>
-          </button>
-        ))}
-      </div>
-
-      {isPending && (
-        <div className="text-xs text-muted-foreground text-center py-2 animate-pulse">
-          กำลังโหลดข้อมูล...
-        </div>
-      )}
-
-      {/* แสดงรายการหนังสือ */}
-      <div className="pt-2">
-        {displayedItems.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            {isBookmarksTab
-              ? "ยังไม่มีหนังสือที่บุ๊กมาร์กไว้"
-              : "ไม่พบหนังสือที่คุณค้นหา"}
-          </div>
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-            {displayedItems.map((book) => {
-              const isBookmarked = bookmarkedSlugs.includes(book.slug);
-              return (
-                <Link
-                  key={book.id}
-                  href={`/books/${book.slug}`}
-                  className="group relative flex flex-col bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-2.5 sm:p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+              {isSearching && (
+                <Loader2 className="size-4 animate-spin text-primary" />
+              )}
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    inputRef.current?.focus();
+                  }}
+                  aria-label="ล้างคำค้นหา"
+                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                  <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-muted mb-3 shadow-sm">
-                    {/* ปุ่มธงเหลืองมุมซ้ายบน */}
-                    <button
-                      type="button"
-                      onClick={(e) => toggleBookmark(e, book.slug)}
-                      className="absolute top-0 left-2 sm:left-3 z-20 p-1 hover:scale-110 transition-transform"
-                      title={
-                        isBookmarked ? "เอาบุ๊กมาร์กออก" : "เพิ่มบุ๊กมาร์ก"
-                      }
-                    >
-                      <Bookmark
-                        className={`size-6 sm:size-7 ${
-                          isBookmarked
-                            ? "text-yellow-500 fill-yellow-500 drop-shadow-md"
-                            : "text-white/70 fill-black/20 hover:text-yellow-400"
-                        }`}
-                      />
-                    </button>
-
-                    {book.coverUrl ? (
-                      <Image
-                        src={book.coverUrl}
-                        alt={book.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                        ไม่มีรูปหน้าปก
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col flex-1 justify-between space-y-1">
-                    <h3 className="font-semibold text-xs sm:text-sm text-card-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-                      {book.title}
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5">
-                      {book.author}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          /* Table View (แสดงเฉพาะเมื่อขยายจอกว้าง sm ขึ้นไปเท่านั้น) */
-          <div className="border border-border rounded-xl overflow-hidden bg-background/40">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/50 text-xs text-muted-foreground uppercase">
-                  <th className="py-3 px-4 font-semibold">บุ๊กมาร์ก</th>
-                  <th className="py-3 px-4 font-semibold">ปกหนังสือ</th>
-                  <th className="py-3 px-4 font-semibold">ชื่อหนังสือ</th>
-                  <th className="py-3 px-4 font-semibold">ผู้แต่ง</th>
-                  <th className="py-3 px-4 font-semibold text-right">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60 text-sm">
-                {displayedItems.map((book) => {
-                  const isBookmarked = bookmarkedSlugs.includes(book.slug);
-                  return (
-                    <tr
-                      key={book.id}
-                      className="hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="py-3 px-4 w-12 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => toggleBookmark(e, book.slug)}
-                          className="hover:scale-110 transition-transform"
-                        >
-                          <Bookmark
-                            className={`size-5 ${
-                              isBookmarked
-                                ? "text-yellow-500 fill-yellow-500"
-                                : "text-muted-foreground/40 hover:text-yellow-500"
-                            }`}
-                          />
-                        </button>
-                      </td>
-                      <td className="py-3 px-4 w-16">
-                        <div className="relative w-10 h-14 rounded overflow-hidden bg-muted">
-                          {book.coverUrl ? (
-                            <Image
-                              src={book.coverUrl}
-                              alt={book.title}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[8px] text-muted-foreground">
-                              ไม่มีปก
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-foreground">
-                        <Link
-                          href={`/books/${book.slug}`}
-                          className="hover:text-primary transition-colors line-clamp-1"
-                        >
-                          {book.title}
-                        </Link>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground truncate max-w-[200px]">
-                        {book.author}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/books/${book.slug}`}>ดูรายละเอียด</Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination UI */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-4 border-t border-border">
-          <div className="text-xs text-muted-foreground font-medium order-2 sm:order-1">
-            {startItem}-{endItem} จาก {displayTotal} เล่ม
-          </div>
-
-          <div className="flex items-center gap-2 order-1 sm:order-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-
-            <span className="text-xs font-semibold px-2">
-              หน้า {currentPage} จาก {displayTotalPages || 1}
-            </span>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= displayTotalPages}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-
-            <div className="relative ml-2 sm:ml-4">
-              <button
-                type="button"
-                onClick={() => setShowLimitDropdown((prev) => !prev)}
-                className="flex items-center justify-between px-3 py-1.5 text-xs border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors w-28"
-              >
-                <span>{limit} / หน้า</span>
-                <Search className="size-3 text-muted-foreground" />
-              </button>
-
-              {showLimitDropdown && (
-                <div className="absolute right-0 mt-1 w-28 bg-popover border border-border rounded-lg shadow-lg py-1 z-50 text-xs">
-                  {[10, 20, 50, 100].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handleLimitChange(val)}
-                      className={`w-full flex items-center justify-between px-3 py-2 hover:bg-muted/60 transition-colors ${
-                        limit === val
-                          ? "text-primary font-semibold bg-primary/10"
-                          : "text-popover-foreground"
-                      }`}
-                    >
-                      <span>{val} / หน้า</span>
-                      {limit === val && <Check className="size-3" />}
-                    </button>
-                  ))}
-                </div>
+                  <X className="size-4" />
+                </button>
+              ) : (
+                <kbd className="hidden rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground sm:inline">
+                  /
+                </kbd>
               )}
             </div>
           </div>
+
+          {/* ปุ่มเปิดตัวกรอง (จอเล็กกว่า lg) */}
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold hover:bg-muted lg:hidden"
+          >
+            <SlidersHorizontal className="size-4" />
+            <span className="hidden sm:inline">ตัวกรอง</span>
+            {advancedCount > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                {advancedCount}
+              </span>
+            )}
+          </button>
+
+          {/* มุมมอง (ซ่อนบนมือถือ ใช้กริดเสมอ) */}
+          <div
+            role="radiogroup"
+            aria-label="มุมมอง"
+            className="hidden shrink-0 items-center rounded-xl border border-border bg-card p-1 sm:flex"
+          >
+            {(
+              [
+                ["grid", LayoutGrid, "กริด"],
+                ["table", TableIcon, "ตาราง"],
+              ] as const
+            ).map(([mode, Icon, label]) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={viewMode === mode}
+                onClick={() => changeView(mode)}
+                className={`flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${
+                  viewMode === mode
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* หมวดหมู่: มือถือเลื่อนแนวนอน / จอกว้างขึ้นบรรทัดใหม่ */}
+        <div className="-mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <CategoryChip
+            active={!filters.category}
+            onClick={() => apply({ category: "" })}
+            label="ทั้งหมด"
+            count={facets.categoryAll}
+          />
+          <CategoryChip
+            active={isBookmarksTab}
+            onClick={() => apply({ category: "bookmarks" })}
+            label="บุ๊กมาร์กของฉัน"
+            count={bookmarkSlugs?.length ?? 0}
+            tone="gold"
+          />
+          {categories.map((c) => (
+            <CategoryChip
+              key={c.id}
+              active={filters.category === c.slug}
+              onClick={() => apply({ category: c.slug })}
+              label={c.name}
+              count={categoryCount(c.slug)}
+            />
+          ))}
         </div>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+        {/* ───────── แผงตัวกรอง (จอกว้าง) ───────── */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-48 max-h-[calc(100dvh-13rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-sm [scrollbar-width:thin]">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-extrabold">
+                <SlidersHorizontal className="size-4 text-primary" />
+                ตัวกรอง
+              </h2>
+              {advancedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAdvanced}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  ล้างทั้งหมด ({advancedCount})
+                </button>
+              )}
+            </div>
+            {panel}
+          </div>
+        </aside>
+
+        <div className="min-w-0 space-y-5">
+          {/* ───────── สรุปผล + ตัวกรองที่ใช้อยู่ + เรียงลำดับ ───────── */}
+          <div ref={resultsRef} className="scroll-mt-48 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-foreground">
+                {bookmarksLoading ? (
+                  "กำลังโหลดบุ๊กมาร์ก…"
+                ) : (
+                  <>
+                    พบ{" "}
+                    <span className="text-primary">
+                      {displayTotal.toLocaleString("th-TH")}
+                    </span>{" "}
+                    เล่ม
+                  </>
+                )}
+              </p>
+              {!isBookmarksTab && (
+                <label className="relative flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <ArrowDownUp className="size-3.5" />
+                  <span className="sr-only sm:not-sr-only">เรียงตาม</span>
+                  <select
+                    value={filters.sort}
+                    onChange={(e) =>
+                      apply({ sort: e.target.value as SortValue })
+                    }
+                    className="h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-xs font-semibold text-foreground"
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+
+            {activeChips.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {activeChips.map((c) => (
+                  <FilterChip key={c.key} label={c.label} onRemove={c.remove} />
+                ))}
+                {activeChips.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    className="ml-1 text-xs font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    ล้างตัวกรองทั้งหมด
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ───────── รายการหนังสือ ───────── */}
+          <div
+            aria-busy={isPending}
+            className={`relative transition-opacity duration-200 ${isPending ? "opacity-50" : ""}`}
+          >
+            {isPending && (
+              <div className="pointer-events-none absolute inset-x-0 -top-2 z-10 h-0.5 overflow-hidden rounded-full bg-primary/15">
+                <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
+              </div>
+            )}
+
+            {bookmarksLoading ? (
+              <GridSkeleton count={8} />
+            ) : displayedItems.length === 0 ? (
+              isBookmarksTab && (bookmarkSlugs?.length ?? 0) === 0 ? (
+                <BooksEmptyState
+                  icon="bookmark"
+                  title="ยังไม่มีหนังสือที่บุ๊กมาร์กไว้"
+                  description="กดริบบิ้นที่มุมปกหนังสือเพื่อเก็บเล่มที่สนใจไว้ที่นี่ แล้วกลับมาอ่านได้ทุกเมื่อ"
+                  actions={
+                    <ActionButton onClick={() => apply({ category: "" })}>
+                      ดูหนังสือทั้งหมด
+                    </ActionButton>
+                  }
+                />
+              ) : (
+                <BooksEmptyState
+                  title={
+                    query
+                      ? `ไม่พบหนังสือที่ตรงกับ “${query}”`
+                      : "ไม่พบหนังสือตามตัวกรองที่เลือก"
+                  }
+                  description={
+                    query
+                      ? "ลองใช้คำที่สั้นลง ตรวจการสะกด หรือค้นจากชื่อผู้แต่ง/สำนักพิมพ์แทน"
+                      : "ลองเอาตัวกรองบางตัวออก หรือเลือกหมวดหมู่อื่น"
+                  }
+                  actions={
+                    <>
+                      {query && (
+                        <ActionButton onClick={() => setSearchTerm("")}>
+                          ล้างคำค้นหา
+                        </ActionButton>
+                      )}
+                      {advancedCount > 0 && (
+                        <ActionButton variant="outline" onClick={clearAdvanced}>
+                          ล้างตัวกรอง ({advancedCount})
+                        </ActionButton>
+                      )}
+                      {filters.category && (
+                        <ActionButton
+                          variant="outline"
+                          onClick={() => apply({ category: "" })}
+                        >
+                          ดูทุกหมวดหมู่
+                        </ActionButton>
+                      )}
+                    </>
+                  }
+                />
+              )
+            ) : viewMode === "table" ? (
+              <>
+                <div className="hidden sm:block">
+                  <BookTable
+                    books={displayedItems}
+                    query={query}
+                    isBookmarked={isBookmarked}
+                    onToggleBookmark={toggle}
+                  />
+                </div>
+                {/* มือถือ: ใช้กริดแทนตาราง */}
+                <div className="sm:hidden">
+                  <Grid
+                    items={displayedItems}
+                    query={query}
+                    isBookmarked={isBookmarked}
+                    toggle={toggle}
+                  />
+                </div>
+              </>
+            ) : (
+              <Grid
+                items={displayedItems}
+                query={query}
+                isBookmarked={isBookmarked}
+                toggle={toggle}
+              />
+            )}
+          </div>
+
+          {/* ───────── แบ่งหน้า ───────── */}
+          {displayTotal > 0 && !bookmarksLoading && (
+            <Pagination
+              currentPage={page}
+              totalPages={displayTotalPages}
+              startItem={startItem}
+              endItem={endItem}
+              total={displayTotal}
+              limit={limit}
+              limitOptions={[...LIMIT_OPTIONS]}
+              onPageChange={(n) => {
+                if (n < 1 || n > displayTotalPages || n === page) return;
+                apply({ page: n }, { scrollToResults: true });
+              }}
+              onLimitChange={(n) => apply({ limit: n })}
+            />
+          )}
+
+          {isBookmarksTab && (bookmarkSlugs?.length ?? 0) > 0 && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              บุ๊กมาร์กเก็บไว้ในเบราว์เซอร์นี้เท่านั้น •{" "}
+              <Link href="/" className="underline-offset-2 hover:underline">
+                ดูบนหน้าแรก
+              </Link>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ───────── แผ่นตัวกรอง (มือถือ/แท็บเล็ต) ───────── */}
+      <FilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onClearAll={clearAdvanced}
+        activeCount={advancedCount}
+        resultCount={displayTotal}
+      >
+        {panel}
+      </FilterSheet>
     </div>
+  );
+}
+
+function Grid({
+  items,
+  query,
+  isBookmarked,
+  toggle,
+}: {
+  items: BookItem[];
+  query: string;
+  isBookmarked: (slug: string) => boolean;
+  toggle: (slug: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4">
+      {items.map((book) => (
+        <BookGridCard
+          key={book.id}
+          book={book}
+          query={query}
+          bookmarked={isBookmarked(book.slug)}
+          onToggleBookmark={() => toggle(book.slug)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CategoryChip({
+  active,
+  onClick,
+  label,
+  count,
+  tone = "default",
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  tone?: "default" | "gold";
+}) {
+  const styles =
+    tone === "gold"
+      ? active
+        ? "border-amber-500 bg-amber-400 text-black shadow-sm"
+        : "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+      : active
+        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+        : "border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${styles} ${
+        !active && count === 0 && tone === "default" ? "opacity-50" : ""
+      }`}
+    >
+      {tone === "gold" && (
+        <Bookmark
+          className={`size-3.5 ${active ? "fill-black" : "fill-amber-500 text-amber-500"}`}
+        />
+      )}
+      {label}
+      <span
+        className={`rounded-full px-1.5 py-px text-[10px] ${active ? "bg-black/15" : "bg-muted text-muted-foreground"}`}
+      >
+        {count.toLocaleString("th-TH")}
+      </span>
+    </button>
+  );
+}
+
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 py-1 pl-3 pr-1 text-xs font-medium text-foreground">
+      <span className="max-w-[16rem] truncate">{label}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`ลบตัวกรอง ${label}`}
+        className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/15 hover:text-foreground"
+      >
+        <X className="size-3" />
+      </button>
+    </span>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  variant = "solid",
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: "solid" | "outline";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+        variant === "solid"
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "border border-border hover:bg-muted"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -1,268 +1,418 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import {
-  BookOpen,
-  ArrowLeft,
-  Library,
   Barcode,
+  BookOpen,
   Building2,
-  Calendar,
+  CalendarDays,
+  ChevronRight,
   FileText,
+  Hash,
+  Layers,
   MapPin,
-  Bookmark,
+  ScrollText,
+  Sparkles,
 } from "lucide-react";
-import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
-import { getPublishedBook } from "@/features/books/queries";
+import { getPublishedBook, listRelatedBooks } from "@/features/books/queries";
+import {
+  ddcInfo,
+  toSearchParams,
+  parseBookFilters,
+} from "@/features/books/filters";
 import { BookBookmarkButton } from "@/components/book-bookmark-button";
+import { BookshelfStrip } from "@/components/bookshelf-strip";
+import {
+  CopyButton,
+  MobileReadBar,
+  ReadButton,
+  ReadProgress,
+  RelatedBooks,
+  ShareButton,
+} from "@/components/books/book-detail-actions";
 
 export const dynamic = "force-dynamic";
 
-const DDC_OPTIONS = [
-  { value: "GENERAL_000", label: "000 - เบ็ดเตล็ด / ความรู้ทั่วไป" },
-  { value: "PHILOSOPHY_100", label: "100 - ปรัชญาและจิตวิทยา" },
-  { value: "RELIGION_200", label: "200 - ศาสนา" },
-  { value: "SOCIAL_SCIENCES_300", label: "300 - สังคมศาสตร์" },
-  { value: "LANGUAGE_400", label: "400 - ภาษาศาสตร์" },
-  { value: "SCIENCE_500", label: "500 - วิทยาศาสตร์และคณิตศาสตร์" },
-  { value: "TECHNOLOGY_600", label: "600 - เทคโนโลยี / วิทยาศาสตร์ประยุกต์" },
-  { value: "ARTS_RECREATION_700", label: "700 - ศิลปะและการบันเทิง / กีฬา" },
-  { value: "LITERATURE_800", label: "800 - วรรณกรรม / วรรณคดี" },
-  { value: "HISTORY_GEOGRAPHY_900", label: "900 - ภูมิศาสตร์และประวัติศาสตร์" },
-];
+type Params = Promise<{ slug: string }>;
 
-export default async function BookPage({
+/** ลิงก์ไปหน้าหนังสือทั้งหมดพร้อมตัวกรอง เช่น filterHref({ publisher: ["..."] }) */
+function filterHref(patch: Partial<ReturnType<typeof parseBookFilters>>) {
+  const qs = toSearchParams({ ...parseBookFilters({}), ...patch }).toString();
+  return `/books${qs ? `?${qs}` : ""}`;
+}
+
+/** ตัดสัญลักษณ์ Markdown ออก ใช้เป็นคำอธิบายสั้นใน meta */
+function plainText(md: string, max = 160) {
+  const text = md
+    .replace(/[#>*_`~\[\]()!-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+const thaiDate = new Intl.DateTimeFormat("th-TH", {
+  dateStyle: "long",
+  timeZone: "Asia/Bangkok",
+});
+
+export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
-}) {
+  params: Params;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const book = await getPublishedBook(slug);
+  if (!book) return { title: "ไม่พบหนังสือ | ห้องสมุดกระทรวงมหาดไทย" };
+  const description = book.description
+    ? plainText(book.description)
+    : `${book.title} โดย ${book.author} — อ่านออนไลน์ที่ห้องสมุดกระทรวงมหาดไทย`;
+  return {
+    title: `${book.title} | ห้องสมุดกระทรวงมหาดไทย`,
+    description,
+    openGraph: {
+      title: book.title,
+      description,
+      type: "book",
+      ...(book.coverUrl
+        ? { images: [{ url: book.coverUrl, alt: book.title }] }
+        : {}),
+    },
+  };
+}
+
+export default async function BookPage({ params }: { params: Params }) {
   const { slug } = await params;
   const book = await getPublishedBook(slug);
   if (!book) notFound();
 
-  const getDdcLabel = (ddcValue?: string | null) => {
-    if (!ddcValue) return "-";
-    const found = DDC_OPTIONS.find((item) => item.value === ddcValue);
-    return found ? found.label : ddcValue.replace(/_/g, " ");
-  };
+  const related = await listRelatedBooks(book);
+  const ddc = ddcInfo(book.ddc);
+  const firstCategory = book.categories[0]?.category;
+
+  /** ข้อมูลบรรณานุกรม: ค่าที่กดได้จะพาไปหน้ารวมพร้อมตัวกรอง */
+  const facts: {
+    icon: typeof Barcode;
+    label: string;
+    value: string | null;
+    href?: string;
+    copy?: boolean;
+  }[] = [
+    { icon: Barcode, label: "รหัสหนังสือ", value: book.bookCode, copy: true },
+    {
+      icon: Hash,
+      label: "หมวดหมู่ DDC",
+      value: ddc ? `${ddc.code} ${ddc.label}` : null,
+      href: ddc ? filterHref({ ddc: [ddc.value] }) : undefined,
+    },
+    {
+      icon: Building2,
+      label: "สำนักพิมพ์",
+      value: book.publisher,
+      href: book.publisher
+        ? filterHref({ publisher: [book.publisher] })
+        : undefined,
+    },
+    {
+      icon: ScrollText,
+      label: "ปีที่พิมพ์ / ข้อมูลการพิมพ์",
+      value: book.publicationInfo,
+    },
+    {
+      icon: FileText,
+      label: "จำนวนหน้า",
+      value: book.pageCount ? `${book.pageCount} หน้า` : null,
+    },
+    {
+      icon: MapPin,
+      label: "จังหวัดที่จัดพิมพ์",
+      value: book.publishingProvince,
+      href: book.publishingProvince
+        ? filterHref({ province: [book.publishingProvince] })
+        : undefined,
+    },
+    {
+      icon: Layers,
+      label: "ประเภทไฟล์",
+      value: book.fileType,
+      href: filterHref({ type: book.fileType }),
+    },
+    {
+      icon: CalendarDays,
+      label: "เผยแพร่ในคลังเมื่อ",
+      value: book.publishedAt ? thaiDate.format(book.publishedAt) : null,
+    },
+  ];
 
   return (
-    /* 🌟 เพิ่ม pb-48 บนมือถือ เพื่อดันพื้นที่ให้พ้น Layout Footer ที่ซ้อนทับอยู่ด้านล่างสุด */
-    <div className="space-y-6 pb-48 md:pb-12">
-      {/* ส่วนหัวและการนำทาง */}
-      <div className="bg-card/90 dark:bg-card/90 backdrop-blur-md border border-border/80 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              className="rounded-xl shrink-0 size-9 sm:size-10"
+    <div className="mx-auto max-w-6xl space-y-6 px-3 pb-28 pt-6 sm:px-6 sm:pt-8 md:px-8 md:pb-20">
+      {/* เส้นทาง */}
+      <nav
+        aria-label="เส้นทาง"
+        className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+      >
+        <Link href="/" className="shrink-0 hover:text-foreground">
+          หน้าแรก
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <Link href="/books" className="shrink-0 hover:text-foreground">
+          หนังสือทั้งหมด
+        </Link>
+        {firstCategory && (
+          <>
+            <ChevronRight className="size-3.5 shrink-0" />
+            <Link
+              href={filterHref({ category: firstCategory.slug })}
+              className="shrink-0 hover:text-foreground"
             >
-              <Link href="/books" aria-label="กลับไปหน้าหนังสือทั้งหมด">
-                <ArrowLeft className="size-4 sm:size-5" />
-              </Link>
-            </Button>
+              {firstCategory.name}
+            </Link>
+          </>
+        )}
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span
+          className="truncate font-medium text-foreground"
+          aria-current="page"
+        >
+          {book.title}
+        </span>
+      </nav>
 
-            <div className="p-2 sm:p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-              <Library className="size-5 sm:size-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                รายละเอียดหนังสือ
-              </h1>
-              <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">
-                ข้อมูลและรายละเอียดเชิงลึกของหนังสือเล่มนี้
-              </p>
-            </div>
+      {/* ───────── ส่วนหัว: ปก + ข้อมูลหลัก + ปุ่ม ───────── */}
+      <section className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-purple-950 via-[#2a0f45] to-indigo-950 text-white shadow-xl">
+        {/* พื้นหลัง: ปกหนังสือเบลอ */}
+        {book.coverUrl && (
+          <div aria-hidden className="absolute inset-0 -z-10 opacity-25">
+            <Image
+              src={book.coverUrl}
+              alt=""
+              fill
+              sizes="10vw"
+              className="scale-125 object-cover blur-3xl"
+            />
           </div>
-        </div>
+        )}
+        <div
+          aria-hidden
+          className="absolute -right-16 -top-20 -z-10 size-72 rounded-full bg-purple-500/25 blur-3xl"
+        />
+        <BookshelfStrip
+          seed={7}
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-12 w-full opacity-25"
+        />
 
-        {/* รายละเอียดเนื้อหาหนังสือภายใน Card หลัก */}
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-[280px_1fr] items-start pt-4 border-t border-border/60">
-          {/* ฝั่งซ้าย: รูปปกหนังสือแบบ Sticky (สำหรับ Desktop) */}
-          <div className="md:sticky md:top-24 space-y-4">
-            <div className="relative aspect-[3/4] w-full max-w-[220px] sm:max-w-[260px] md:max-w-none mx-auto overflow-hidden rounded-xl border bg-muted shadow-md">
-              <BookBookmarkButton slug={book.slug} />
-
+        <div className="grid gap-6 p-5 sm:p-8 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10 md:p-10">
+          {/* ปก */}
+          <div className="relative mx-auto w-44 sm:w-52 md:w-full">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-purple-950 shadow-[0_25px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/20">
               {book.coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={book.coverUrl}
                   alt={`ปก ${book.title}`}
-                  className="size-full object-cover"
+                  fill
+                  priority
+                  sizes="(min-width: 768px) 240px, 208px"
+                  className="object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-secondary/50">
-                  <BookOpen className="size-12 text-muted-foreground/60" />
+                <div className="flex size-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-800 to-indigo-950 p-5 text-center text-purple-100/70">
+                  <BookOpen className="size-10" />
+                  <span className="line-clamp-4 text-xs">{book.title}</span>
                 </div>
               )}
+              <span className="absolute right-2 top-2 rounded-full border border-white/20 bg-black/55 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
+                {book.fileType}
+              </span>
             </div>
-
-            {/* ปุ่มเริ่มอ่านฝั่ง Desktop */}
-            <div className="hidden md:block">
-              <Button
-                asChild
-                size="lg"
-                className="w-full shadow-md rounded-xl text-sm sm:text-base"
-              >
-                <Link href={`/read/${book.slug}`}>
-                  <BookOpen className="size-4 mr-2" /> เริ่มอ่านหนังสือ
-                </Link>
-              </Button>
-            </div>
+            <BookBookmarkButton slug={book.slug} title={book.title} />
           </div>
 
-          {/* ฝั่งขวา: ข้อมูลรายละเอียด */}
-          <div className="space-y-4 sm:space-y-6 text-center md:text-left">
-            {/* ปุ่มเริ่มอ่านด่วนบนมือถือ */}
-            <div className="block md:hidden pt-1">
-              <Button
-                asChild
-                size="lg"
-                className="w-full shadow-lg rounded-xl text-sm font-semibold bg-primary text-primary-foreground py-6"
-              >
-                <Link href={`/read/${book.slug}`}>
-                  <BookOpen className="size-5 mr-2" /> เริ่มอ่านหนังสือทันที
+          {/* ข้อมูลหลัก */}
+          <div className="flex min-w-0 flex-col justify-center gap-5 text-center md:text-left">
+            <div className="flex flex-wrap justify-center gap-1.5 md:justify-start">
+              {ddc && (
+                <Link
+                  href={filterHref({ ddc: [ddc.value] })}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-400/25"
+                >
+                  <span className="font-mono font-bold">{ddc.code}</span>
+                  {ddc.label}
                 </Link>
-              </Button>
+              )}
+              {book.categories.map((bc) => (
+                <Link
+                  key={bc.categoryId}
+                  href={filterHref({ category: bc.category.slug })}
+                  className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-purple-50 hover:bg-white/20"
+                >
+                  {bc.category.name}
+                </Link>
+              ))}
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground leading-snug">
+              <h1 className="text-2xl font-extrabold leading-snug tracking-tight sm:text-3xl md:text-4xl">
                 {book.title}
-              </h2>
-              <p className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium">
-                โดย {book.author || "ไม่ระบุผู้แต่ง"}
-              </p>
-            </div>
-
-            {/* หมวดหมู่ */}
-            {book.categories && book.categories.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center md:justify-start">
-                {book.categories.map((bc) => (
-                  <Link
-                    key={bc.categoryId}
-                    href={`/books?category=${bc.category.slug}`}
-                  >
-                    <Badge
-                      variant="outline"
-                      className="px-3 py-1.5 text-xs font-medium cursor-pointer hover:bg-primary/10 transition-colors"
+              </h1>
+              <p className="text-sm text-purple-100/85 sm:text-base">
+                โดย{" "}
+                <span className="font-semibold text-white">
+                  {book.author || "ไม่ระบุผู้แต่ง"}
+                </span>
+                {book.publisher && (
+                  <>
+                    {" • "}
+                    <Link
+                      href={filterHref({ publisher: [book.publisher] })}
+                      className="underline-offset-2 hover:underline"
                     >
-                      {bc.category.name}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground/60 italic">
-                ไม่มีหมวดหมู่
+                      {book.publisher}
+                    </Link>
+                  </>
+                )}
               </p>
-            )}
-
-            {/* ข้อมูลบรรณานุกรมเพิ่มเติม */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 pb-2 text-left bg-muted/30 p-3.5 rounded-xl border border-border/40 text-xs sm:text-sm">
-              <div className="flex items-center gap-2">
-                <Barcode className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  รหัสหนังสือ:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {book.bookCode || "-"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Bookmark className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  หมวดหมู่ DDC:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {getDdcLabel(book.ddc)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Building2 className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  สำนักพิมพ์:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {book.publisher || "-"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  ปีที่พิมพ์ / ข้อมูลพิมพ์:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {book.publicationInfo || "-"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <FileText className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  จำนวนหน้า:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {book.pageCount ? `${book.pageCount} หน้า` : "-"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <MapPin className="size-4 text-primary shrink-0" />
-                <span className="text-muted-foreground font-medium">
-                  จังหวัดที่พิมพ์:
-                </span>
-                <span className="font-semibold text-foreground">
-                  {book.publishingProvince || "-"}
-                </span>
-              </div>
             </div>
 
-            {/* คำอธิบาย */}
-            {book.description ? (
-              <div className="space-y-2 text-left">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  รายละเอียดและเนื้อหาย่อ
-                </p>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed bg-card/40 p-4 sm:p-5 rounded-xl border border-border/50 shadow-sm">
-                  <ReactMarkdown>{book.description}</ReactMarkdown>
-                </div>
+            {/* สรุปสั้น */}
+            <dl className="flex flex-wrap justify-center gap-2 text-xs md:justify-start">
+              {[
+                {
+                  label: "จำนวนหน้า",
+                  value: book.pageCount ? `${book.pageCount} หน้า` : null,
+                },
+                { label: "ประเภทไฟล์", value: book.fileType },
+                {
+                  label: "เผยแพร่",
+                  value: book.publishedAt
+                    ? thaiDate.format(book.publishedAt)
+                    : null,
+                },
+              ]
+                .filter((f) => f.value)
+                .map((f) => (
+                  <div
+                    key={f.label}
+                    className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 backdrop-blur-sm"
+                  >
+                    <dt className="text-[10px] text-purple-200/70">
+                      {f.label}
+                    </dt>
+                    <dd className="font-semibold">{f.value}</dd>
+                  </div>
+                ))}
+            </dl>
+
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                <ReadButton slug={book.slug} />
+                <BookBookmarkButton
+                  slug={book.slug}
+                  title={book.title}
+                  variant="button"
+                />
+                <ShareButton title={book.title} />
               </div>
-            ) : (
-              <p className="text-xs sm:text-sm text-muted-foreground/60 italic text-left">
-                ไม่มีคำอธิบายเพิ่มเติม
-              </p>
-            )}
+              <ReadProgress slug={book.slug} />
+            </div>
           </div>
         </div>
+      </section>
+
+      {/* ───────── เรื่องย่อ + ข้อมูลบรรณานุกรม ───────── */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <article className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-8">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
+            <span className="rounded-xl bg-primary/10 p-2 text-primary">
+              <Sparkles className="size-4" />
+            </span>
+            รายละเอียดและเนื้อหาย่อ
+          </h2>
+          {book.description ? (
+            // จัดรูปแบบ Markdown เอง (โปรเจคไม่ได้ติดตั้ง @tailwindcss/typography)
+            <div className="space-y-3 text-sm leading-relaxed text-foreground/85 sm:text-base [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_h1]:text-xl [&_h1]:font-bold [&_h1]:text-foreground [&_h2]:pt-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-foreground [&_h3]:font-bold [&_h3]:text-foreground [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:pl-6">
+              <ReactMarkdown>{book.description}</ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-sm italic text-muted-foreground">
+              ยังไม่มีคำอธิบายสำหรับหนังสือเล่มนี้
+            </p>
+          )}
+        </article>
+
+        <aside className="h-fit rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6 lg:sticky lg:top-24">
+          <h2 className="mb-3 text-sm font-extrabold text-foreground">
+            ข้อมูลบรรณานุกรม
+          </h2>
+          <dl className="divide-y divide-border/60">
+            {facts.map(({ icon: Icon, label, value, href, copy }) => (
+              <div key={label} className="flex items-start gap-3 py-2.5">
+                <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                  <dd className="break-words text-sm font-semibold text-foreground">
+                    {!value ? (
+                      <span className="font-normal text-muted-foreground/70">
+                        -
+                      </span>
+                    ) : href ? (
+                      <Link
+                        href={href}
+                        className="hover:text-primary hover:underline"
+                        title={`ดูหนังสือที่มี${label}นี้`}
+                      >
+                        {value}
+                      </Link>
+                    ) : (
+                      value
+                    )}
+                  </dd>
+                </div>
+                {copy && value && (
+                  <CopyButton value={value} label={`คัดลอก${label}`} />
+                )}
+              </div>
+            ))}
+          </dl>
+        </aside>
       </div>
 
-      {/* Floating Bottom Bar สำหรับมือถือ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-t border-border p-3 flex items-center justify-between gap-3 md:hidden shadow-2xl">
-        <div className="truncate px-2">
-          <p className="text-xs font-bold text-foreground truncate">
-            {book.title}
-          </p>
-          <p className="text-[10px] text-muted-foreground truncate">
-            {book.author || "ไม่ระบุผู้แต่ง"}
-          </p>
-        </div>
-        <Button
-          asChild
-          size="default"
-          className="shrink-0 shadow-md rounded-xl text-xs font-semibold px-5"
-        >
-          <Link href={`/read/${book.slug}`}>
-            <BookOpen className="size-4 mr-1.5" /> เริ่มอ่าน
-          </Link>
-        </Button>
-      </div>
+      {/* ───────── หนังสือที่เกี่ยวข้อง ───────── */}
+      {related.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
+                หนังสือที่เกี่ยวข้อง
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                {ddc
+                  ? `จากหมวดหมู่และหมวด DDC ${ddc.code} เดียวกัน`
+                  : "จากหมวดหมู่เดียวกัน"}
+              </p>
+            </div>
+            <Link
+              href={
+                firstCategory
+                  ? filterHref({ category: firstCategory.slug })
+                  : ddc
+                    ? filterHref({ ddc: [ddc.value] })
+                    : "/books"
+              }
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              ดูทั้งหมด <ChevronRight className="size-4" />
+            </Link>
+          </div>
+          <RelatedBooks books={related} />
+        </section>
+      )}
+
+      <MobileReadBar
+        slug={book.slug}
+        title={book.title}
+        author={book.author || "ไม่ระบุผู้แต่ง"}
+      />
     </div>
   );
 }

@@ -24,12 +24,20 @@ export function FooterFocusEffect({
     let raf = 0;
     const update = () => {
       raf = 0;
-      const rect = footer.getBoundingClientRect();
-      const visible = Math.min(
-        Math.max(window.innerHeight - rect.top, 0),
-        rect.height,
-      );
-      const p = rect.height > 0 ? visible / rect.height : 0;
+      // วัดจาก "ระยะที่ผู้ใช้เลื่อนเข้าหา footer" (ไม่ใช่แค่ footer โผล่ในจอหรือไม่)
+      // → หน้าสั้นที่เห็น footer ตั้งแต่แรกจะไม่เบลอ จนกว่าผู้ใช้จะเลื่อนลงจริง
+      const vh = window.innerHeight;
+      const scrollY = window.scrollY;
+      const footerTop = footer.getBoundingClientRect().top + scrollY;
+      const start = Math.max(0, footerTop - vh);
+      const maxScroll = document.documentElement.scrollHeight - vh;
+      const range = maxScroll - start;
+      // เนื้อหาสั้น (ไม่ถึง 1.5 เท่าของจอ) ไม่ต้องใช้เอฟเฟกต์ — ผู้ใช้ยังต้องอ่านเนื้อหาอยู่
+      const shortPage = target.offsetHeight < vh * 1.5;
+      const p =
+        !shortPage && range > 1
+          ? Math.min(Math.max((scrollY - start) / range, 0), 1)
+          : 0;
       if (p <= 0.01) {
         // ไม่ใส่ filter เลยตอนไม่ถึง footer (ประหยัดการ render)
         target.style.filter = "";

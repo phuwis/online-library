@@ -1,38 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { cookies } from "next/headers";
 import { prisma } from "@repo/db";
-import { slugify } from "@/lib/format";
+import { SESSION_COOKIE, sessionToken } from "@/lib/auth";
 
-const bookSchema = z.object({
-  title: z.string().trim().min(1),
-  slug: z.string().trim().optional(),
-  author: z.string().trim().min(1),
-  fileUrl: z.string().trim().min(1), // <--- เปลี่ยนจาก .url() เป็น .min(1) เพื่อรองรับ /uploads/...
-  fileType: z.enum(["EPUB", "PDF"]).default("EPUB"),
-  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
-});
+// หมายเหตุ: การเพิ่ม/แก้ไขหนังสือย้ายไปใช้ API แล้ว
+//   POST /api/books        (app/api/books/route.ts)  — สร้าง bookCode / slug / อัปโหลดไฟล์
+//   PUT  /api/books/[slug] (app/api/books/[slug]/route.ts)
+// createBook เดิมถูกลบออก เพราะไม่มีที่ใช้และไม่ได้สร้าง bookCode (ทำให้ `next build` ล้ม)
 
-export async function createBook(formData: FormData) {
-  const parsed = bookSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) throw new Error("ข้อมูลหนังสือไม่ถูกต้อง");
-  const { slug, status, ...rest } = parsed.data;
-  const categoryIds = formData.getAll("categoryIds").map(String);
-
-  await prisma.book.create({
-    data: {
-      ...rest,
-      status,
-      slug: slug ? slugify(slug) : slugify(rest.title),
-      publishedAt: status === "PUBLISHED" ? new Date() : null,
-      categories: { create: categoryIds.map((categoryId) => ({ categoryId })) },
-    },
-  });
-  revalidatePath("/dashboard/books");
+/** server action เรียกได้จากภายนอกเสมอ → ต้องเช็กสิทธิ์ในตัว action เอง */
+async function assertAdmin() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const expected = await sessionToken();
+  if (!token || !expected || token !== expected)
+    throw new Error("ไม่มีสิทธิ์ดำเนินการ");
 }
 
 export async function deleteBook(formData: FormData) {
+  await assertAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.book.delete({ where: { id } });
