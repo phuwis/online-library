@@ -27,6 +27,7 @@ export async function drainEvents(redis: Redis, shouldStop: () => boolean) {
           occurredAt: new Date(e.occurredAt),
           bookId: e.bookId,
           userId: e.userId,
+          visitorId: e.visitorId ?? null,
           sessionId: e.sessionId,
           type: e.type,
           percent: e.percent,

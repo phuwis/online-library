@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { BookshelfStrip } from "@/components/bookshelf-strip";
 import { FooterFocusEffect } from "@/components/footer-focus-effect";
+import { VisitCounter } from "@/components/visit-counter";
 
 /**
  * ข้อมูลทั้งหมดใน footer (แก้ที่นี่ที่เดียว)
@@ -119,6 +120,7 @@ export function SiteFooter() {
                 </a>
               ))}
             </div>
+            <VisitCounter />
           </div>
 
           {/* 2) ติดต่อเรา */}

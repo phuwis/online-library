@@ -104,6 +104,7 @@ model ReadingEvent {
   occurredAt DateTime   @default(now())
   bookId     String
   userId     String?
+  visitorId  String?    // id ผู้เยี่ยมชมแบบไม่ระบุตัวตน (ตัวเดียวกับ PageView) → นับจำนวนผู้อ่าน
   sessionId  String     // uuid จาก client ต่อ 1 ครั้งที่เปิดอ่าน
   type       EventType
   percent    Float      @default(0) // 0..1
@@ -111,6 +112,36 @@ model ReadingEvent {
 
   @@id([id, occurredAt]) // partition key ต้องอยู่ใน PK
   @@index([bookId, occurredAt])
+  @@index([occurredAt])
+}
+
+// การเข้าชมหน้าเว็บ 1 แถว = เปิด 1 หน้า (ไม่เก็บ IP / ข้อมูลส่วนบุคคล)
+model PageView {
+  id         BigInt     @id @default(autoincrement())
+  occurredAt DateTime   @default(now())
+  area       SiteArea   // PUBLIC = หน้าบ้าน, ADMIN = หลังบ้าน (/dashboard, /login)
+  path       String     // pathname ไม่รวม query string
+  visitorId  String     // uuid สุ่มเก็บใน localStorage ของเบราว์เซอร์
+  sessionId  String     // uuid ต่อการเข้าใช้ 1 ครั้ง (หมดอายุเมื่อไม่ใช้งาน 30 นาที)
+  referrer   String?    // เฉพาะ host ของเว็บต้นทาง และเฉพาะหน้าแรกของ session
+  device     DeviceType
+  categoryId String?    // เปิดรายการหนังสือของหมวดหมู่ (/books?category=slug) — ไม่ผูก FK เผื่อหมวดถูกลบ
+
+  @@index([occurredAt])
+  @@index([area, occurredAt])
+  @@index([visitorId, occurredAt])
+  @@index([categoryId, occurredAt])
+}
+
+enum SiteArea {
+  PUBLIC
+  ADMIN
+}
+
+enum DeviceType {
+  MOBILE
+  TABLET
+  DESKTOP
 }
 
 // ───────────── Aggregates (dashboard อ่านจากตรงนี้) ─────────────

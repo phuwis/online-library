@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { SiteTracker } from "@/components/site-tracker";
 
 export const metadata: Metadata = {
   title: "ห้องสมุดกระทรวงมหาดไทย",
@@ -28,6 +30,10 @@ export default function RootLayout({
       <body className="min-h-screen">
         {children}
         <Toaster position="top-right" richColors />
+        {/* สถิติการเข้าชม (หน้าบ้าน + หลังบ้าน) สำหรับ dashboard */}
+        <Suspense fallback={null}>
+          <SiteTracker />
+        </Suspense>
       </body>
     </html>
   );
